@@ -1,0 +1,52 @@
+version: '3.9'
+
+services:
+  # PostgreSQL 16 Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: devpilot-postgres
+    environment:
+      POSTGRES_USER: devpilot
+      POSTGRES_PASSWORD: devpilot_secret
+      POSTGRES_DB: devpilot
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./internal/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devpilot -d devpilot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Temporal (local development)
+  temporal:
+    image: temporalio/auto-setup:1.24.0
+    container_name: devpilot-temporal
+    environment:
+      - DB=postgresql
+      - DB_PORT=5432
+      - POSTGRES_USER=devpilot
+      - POSTGRES_PWD=devpilot_secret
+      - POSTGRES_SEEDS=postgres
+    ports:
+      - "7233:7233"   # Frontend gRPC
+      - "8233:8233"   # Web UI (optional)
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Temporal Web UI (optional, for debugging)
+  temporal-web:
+    image: temporalio/web:1.24.0
+    container_name: devpilot-temporal-web
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+    ports:
+      - "8088:8088"
+    depends_on:
+      - temporal
+
+volumes:
+  postgres_data:

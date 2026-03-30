@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+package agent;
+
+option go_package = "github.com/devpilot/backend/api";
+
+service AgentService {
+    // PM Agent: 生成 PRD
+    rpc GeneratePRD(PRDRequest) returns (PRDResponse);
+
+    // Dev Agent: 生成代码
+    rpc GenerateCode(CodeRequest) returns (CodeResponse);
+
+    // Test Agent: 生成测试用例
+    rpc GenerateTests(TestRequest) returns (TestResponse);
+
+    // Ops Agent: 触发部署
+    rpc TriggerDeployment(DeployRequest) returns (DeployResponse);
+
+    // 测试连通性
+    rpc Ping(PingRequest) returns (PongResponse);
+}
+
+message PRDRequest {
+    string requirement_id = 1;
+    string description = 2;
+    string user_id = 3;
+}
+
+message PRDResponse {
+    bool success = 1;
+    string prd_content = 2;  // Markdown 格式
+    string error = 3;
+    repeated string logs = 4;
+}
+
+message CodeRequest {
+    string task_id = 1;
+    string description = 2;
+    string language = 3;     // go/python/typescript
+    string framework = 4;    // gin/next.js
+    string prd_context = 5;  // 关联 PRD 内容
+}
+
+message CodeResponse {
+    bool success = 1;
+    string code_output = 2;  // 生成的代码或文件路径
+    repeated FileOutput files = 3;
+    string error = 4;
+    repeated string logs = 5;
+}
+
+message FileOutput {
+    string path = 1;
+    string content = 2;
+    int64 size = 3;
+}
+
+message TestRequest {
+    string task_id = 1;
+    string code_files = 2;    // 关联的代码文件内容
+    string language = 3;
+    string test_framework = 4; // pytest/jest
+}
+
+message TestResponse {
+    bool success = 1;
+    repeated FileOutput test_files = 2;
+    string error = 3;
+    repeated string logs = 4;
+}
+
+message DeployRequest {
+    string task_id = 1;
+    string platform = 2;      // vercel/render/flyio
+    string app_type = 3;      // frontend/backend
+    string branch = 4;
+    string commit_sha = 5;
+}
+
+message DeployResponse {
+    bool success = 1;
+    string deployment_id = 2;
+    string preview_url = 3;
+    string status = 4;        // deploying/success/failed
+    string error = 5;
+    repeated string logs = 6;
+}
+
+message PingRequest {}
+
+message PongResponse {
+    string message = 1;
+}
