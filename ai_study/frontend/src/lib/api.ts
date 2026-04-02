@@ -48,7 +48,9 @@ export async function fetchTasks(filters?: {
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return response.json();
+    const data = await response.json();
+    // API returns {tasks: [...], total: N}, extract the array
+    return Array.isArray(data) ? data : (data.tasks ?? []);
   } catch {
     // Fallback to mock data on API failure
     let filtered = [...mockTasks];

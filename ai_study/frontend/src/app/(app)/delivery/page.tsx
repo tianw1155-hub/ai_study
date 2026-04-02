@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { PRDDisplay } from '@/components/delivery/PRDDisplay';
 import { GitHubCard } from '@/components/delivery/GitHubCard';
 import { FileTree } from '@/components/delivery/FileTree';
@@ -14,7 +15,9 @@ import {
 import { PRDVersion, GitHubRepoInfo, FileTreeNode } from '@/types/delivery';
 
 export default function DeliveryPage() {
-  const [taskId] = useState('t12345');
+  const searchParams = useSearchParams();
+  const taskIdFromUrl = searchParams.get('task_id');
+  const [taskId] = useState(taskIdFromUrl || 't12345');
   const [prd, setPrd] = useState<{ current: PRDVersion; versions: PRDVersion[] } | null>(
     null
   );
@@ -101,17 +104,17 @@ export default function DeliveryPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="h-full overflow-y-auto">
         <div className="max-w-7xl mx-auto px-4 py-8">
           <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-200 rounded w-48" />
+            <div className="h-8 bg-gray-800 rounded w-48" />
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
               <div className="lg:col-span-3 space-y-4">
-                <div className="h-64 bg-gray-200 rounded" />
-                <div className="h-48 bg-gray-200 rounded" />
+                <div className="h-64 bg-gray-800 rounded" />
+                <div className="h-48 bg-gray-800 rounded" />
               </div>
               <div className="lg:col-span-2">
-                <div className="h-64 bg-gray-200 rounded" />
+                <div className="h-64 bg-gray-800 rounded" />
               </div>
             </div>
           </div>
@@ -122,9 +125,9 @@ export default function DeliveryPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white rounded-lg shadow-md p-6 max-w-md">
-          <div className="text-red-600 text-center">
+      <div className="h-full overflow-y-auto flex items-center justify-center">
+        <div className="bg-gray-900 rounded-lg shadow-md p-6 max-w-md border border-gray-700">
+          <div className="text-red-400 text-center">
             <span className="text-2xl">⚠️</span>
             <p className="mt-2">{error}</p>
           </div>
@@ -134,17 +137,17 @@ export default function DeliveryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-full overflow-y-auto">
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-6">
           <div className="flex items-center gap-4">
             <a
               href="/"
-              className="text-blue-600 hover:underline flex items-center gap-1"
+              className="text-blue-400 hover:underline flex items-center gap-1"
             >
               ← 返回任务看板
             </a>
-            <h1 className="text-2xl font-bold text-gray-900">产物交付中心</h1>
+            <h1 className="text-2xl font-bold text-white">产物交付中心</h1>
             <span className="text-gray-500">任务 #{taskId}</span>
           </div>
         </div>

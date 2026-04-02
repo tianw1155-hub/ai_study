@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, KeyboardEvent } from 'react';
 
-const API_BASE = 'http://localhost:8080';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 const MIN_CHARS = 10;
 const MAX_CHARS = 2000;
 

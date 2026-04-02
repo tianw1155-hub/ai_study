@@ -65,29 +65,29 @@ export function FilePreview({ taskId, path, ref_, onClose }: FilePreviewProps) {
   const getLineCount = (text: string) => text.split('\n').length;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-8">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl h-[80vh] flex flex-col">
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-8">
+      <div className="bg-gray-900 rounded-lg shadow-xl w-full max-w-6xl h-[80vh] flex flex-col border border-gray-700">
+        <div className="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <span className="font-semibold text-gray-900">{filename}</span>
+            <span className="font-semibold text-white">{filename}</span>
             <span className="text-sm text-gray-500">{path}</span>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" onClick={handleCopy}>
               {copied ? '✓ 已复制' : '复制代码'}
             </Button>
-            <Button variant="ghost" size="sm" onClick={openInNewTab}>
+            <Button variant="ghost" size="sm" className="text-gray-300 hover:text-white" onClick={openInNewTab}>
               新标签页打开
             </Button>
-            <Button variant="ghost" size="sm" onClick={onClose}>
+            <Button variant="ghost" size="sm" className="text-gray-300 hover:text-white" onClick={onClose}>
               ✕
             </Button>
           </div>
         </div>
 
         {isLargeFile && (
-          <div className="px-6 py-2 bg-yellow-50 border-b border-yellow-200">
-            <span className="text-sm text-yellow-700">
+          <div className="px-6 py-2 bg-yellow-500/10 border-b border-yellow-500/30">
+            <span className="text-sm text-yellow-400">
               ⚠️ 文件过大，仅展示前 {MAX_LINES} 行
             </span>
           </div>
@@ -119,7 +119,7 @@ export function FilePreview({ taskId, path, ref_, onClose }: FilePreviewProps) {
           )}
         </div>
 
-        <div className="px-6 py-2 border-t border-gray-200 text-xs text-gray-500">
+        <div className="px-6 py-2 border-t border-gray-700 text-xs text-gray-500">
           {getLineCount(content)} 行 | {path} @ {ref_}
         </div>
       </div>

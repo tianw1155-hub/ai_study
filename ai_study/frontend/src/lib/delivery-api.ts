@@ -6,7 +6,7 @@ import {
   RollbackLog,
 } from '@/types/delivery';
 
-const API_BASE = '/api/delivery';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 export async function fetchPRD(
   taskId: string

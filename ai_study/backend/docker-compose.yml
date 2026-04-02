@@ -22,7 +22,7 @@ services:
 
   # Temporal (local development)
   temporal:
-    image: temporalio/auto-setup:1.24.0
+    image: temporalio/auto-setup:1.23.0
     container_name: devpilot-temporal
     environment:
       - DB=postgresql
@@ -32,21 +32,10 @@ services:
       - POSTGRES_SEEDS=postgres
     ports:
       - "7233:7233"   # Frontend gRPC
-      - "8233:8233"   # Web UI (optional)
+      - "8233:8233"   # Web UI
     depends_on:
       postgres:
         condition: service_healthy
-
-  # Temporal Web UI (optional, for debugging)
-  temporal-web:
-    image: temporalio/web:1.24.0
-    container_name: devpilot-temporal-web
-    environment:
-      - TEMPORAL_ADDRESS=temporal:7233
-    ports:
-      - "8088:8088"
-    depends_on:
-      - temporal
 
 volumes:
   postgres_data:

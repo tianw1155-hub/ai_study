@@ -112,11 +112,11 @@ export function PRDDisplay({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md border border-gray-200">
-      <div className="px-6 py-4 border-b border-gray-200">
+    <div className="bg-gray-900 rounded-lg shadow-md border border-gray-700">
+      <div className="px-6 py-4 border-b border-gray-700">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-xl font-semibold text-gray-900">📄 PRD 文档</span>
+            <span className="text-xl font-semibold text-white">📄 PRD 文档</span>
             <Badge variant="info">{current.version}（当前）</Badge>
           </div>
           <div className="flex items-center gap-2">
@@ -124,6 +124,7 @@ export function PRDDisplay({
               variant="ghost"
               size="sm"
               onClick={() => setShowCompare(!showCompare)}
+              className="text-gray-300 hover:text-white hover:bg-gray-800"
             >
               版本对比
             </Button>
@@ -131,6 +132,7 @@ export function PRDDisplay({
               variant="secondary"
               size="sm"
               onClick={() => setShowHistory(!showHistory)}
+              className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
             >
               {showHistory ? '收起历史' : '版本历史'}
             </Button>
@@ -139,13 +141,13 @@ export function PRDDisplay({
       </div>
 
       {showCompare && (
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+        <div className="px-6 py-4 border-b border-gray-700 bg-gray-950">
           <PRDCompare versions={versions} />
         </div>
       )}
 
       {showHistory && (
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+        <div className="px-6 py-4 border-b border-gray-700 bg-gray-950">
           <PRDVersionHistory
             versions={versions}
             currentVersionId={current.id}
@@ -155,19 +157,19 @@ export function PRDDisplay({
       )}
 
       <div className="px-6 py-4 max-h-[600px] overflow-y-auto">
-        <div className="prose prose-slate max-w-none">
+        <div className="prose prose-invert max-w-none">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>
             {current.content}
           </ReactMarkdown>
         </div>
       </div>
 
-      <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+      <div className="px-6 py-4 border-t border-gray-700 bg-gray-950 rounded-b-lg">
         <div className="flex items-center gap-3">
           <Button variant="primary" size="sm" onClick={downloadMarkdown}>
             下载 MD
           </Button>
-          <Button variant="secondary" size="sm" onClick={downloadPDF}>
+          <Button variant="secondary" size="sm" onClick={downloadPDF} className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700">
             下载 PDF
           </Button>
         </div>

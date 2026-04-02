@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useCallback, DragEvent } from 'react';
 
-const API_BASE = 'http://localhost:8080';
+const API_BASE = 'http://localhost:8085';
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const MAX_FILES = 5;
 const ACCEPTED_TYPES = ['.md', '.docx', '.pdf', '.txt'];

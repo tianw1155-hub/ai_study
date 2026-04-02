@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { WebSocketMessage, isTaskStateChangedMessage } from '@/types/websocket';
 import { Task, TaskState } from '@/types/task';
 
-const WS_URL = 'wss://api.devpilot.com/ws';
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL || '';
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000, 16000, 32000];
 
 /**
@@ -81,6 +81,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   }, [updateTaskInCache, onTaskStateChanged]);
 
   const connect = useCallback(() => {
+    if (!WS_URL) return;
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       return;
     }
@@ -100,7 +101,9 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     ws.onmessage = handleMessage;
 
     ws.onerror = (error) => {
-      console.error('[WebSocket] Error:', error);
+      if (WS_URL) {
+        console.error('[WebSocket] Error:', error);
+      }
       updateStatus('error');
     };
 

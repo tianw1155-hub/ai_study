@@ -67,7 +67,7 @@ export function PRDCompare({ versions }: PRDCompareProps) {
     <div className="space-y-4">
       <div className="flex items-center gap-4">
         <div className="flex-1">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-300 mb-1">
             选择版本 A（较旧）
           </label>
           <select
@@ -76,7 +76,7 @@ export function PRDCompare({ versions }: PRDCompareProps) {
               setLeftVersionId(e.target.value);
               setShowDiff(false);
             }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-700 rounded-md bg-gray-950 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">选择版本...</option>
             {versions.map((v) => (
@@ -90,7 +90,7 @@ export function PRDCompare({ versions }: PRDCompareProps) {
         <div className="text-gray-400 mt-6">↔</div>
 
         <div className="flex-1">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-300 mb-1">
             选择版本 B（较新）
           </label>
           <select
@@ -99,7 +99,7 @@ export function PRDCompare({ versions }: PRDCompareProps) {
               setRightVersionId(e.target.value);
               setShowDiff(false);
             }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-700 rounded-md bg-gray-950 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">选择版本...</option>
             {versions.map((v) => (
@@ -128,16 +128,16 @@ export function PRDCompare({ versions }: PRDCompareProps) {
       </div>
 
       {showDiff && leftLines.length > 0 && (
-        <div className="mt-4 border border-gray-200 rounded-lg overflow-hidden">
+        <div className="mt-4 border border-gray-700 rounded-lg overflow-hidden">
           {/* Header row */}
-          <div className="grid grid-cols-2 divide-x divide-gray-200 bg-gray-50 border-b border-gray-200">
+          <div className="grid grid-cols-2 divide-x divide-gray-700 bg-gray-950 border-b border-gray-700">
             <div className="px-4 py-2">
-              <span className="text-sm font-medium text-red-700">
+              <span className="text-sm font-medium text-red-400">
                 ← {leftVersion?.version}（删除）
               </span>
             </div>
             <div className="px-4 py-2">
-              <span className="text-sm font-medium text-green-700">
+              <span className="text-sm font-medium text-green-400">
                 → {rightVersion?.version}（新增）
               </span>
             </div>
@@ -151,20 +151,20 @@ export function PRDCompare({ versions }: PRDCompareProps) {
                   const left = leftLines[idx];
                   const right = rightLines[idx];
                   return (
-                    <tr key={idx} className="border-b border-gray-100">
+                    <tr key={idx} className="border-b border-gray-800">
                       {/* Left: removed or unchanged */}
                       <td
                         className={`px-3 py-0.5 font-mono text-sm whitespace-pre-wrap break-all ${
                           left?.type === 'removed'
-                            ? 'bg-red-100 text-red-800'
+                            ? 'bg-red-500/10 text-red-300'
                             : left?.type === 'spacer'
-                            ? 'bg-gray-50'
-                            : 'bg-white text-gray-800'
+                            ? 'bg-gray-900'
+                            : 'bg-gray-900 text-gray-300'
                         }`}
                         style={{ minWidth: 0, width: '50%' }}
                       >
                         {left?.type === 'removed' && (
-                          <span className="text-red-500 mr-1">-</span>
+                          <span className="text-red-400 mr-1">-</span>
                         )}
                         {left?.text ?? ''}
                       </td>
@@ -172,15 +172,15 @@ export function PRDCompare({ versions }: PRDCompareProps) {
                       <td
                         className={`px-3 py-0.5 font-mono text-sm whitespace-pre-wrap break-all ${
                           right?.type === 'added'
-                            ? 'bg-green-100 text-green-800'
+                            ? 'bg-green-500/10 text-green-300'
                             : right?.type === 'spacer'
-                            ? 'bg-gray-50'
-                            : 'bg-white text-gray-800'
+                            ? 'bg-gray-900'
+                            : 'bg-gray-900 text-gray-300'
                         }`}
                         style={{ minWidth: 0, width: '50%' }}
                       >
                         {right?.type === 'added' && (
-                          <span className="text-green-500 mr-1">+</span>
+                          <span className="text-green-400 mr-1">+</span>
                         )}
                         {right?.text ?? ''}
                       </td>

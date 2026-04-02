@@ -79,22 +79,22 @@ export function RollbackDialog({ version, onConfirm, onCancel }: RollbackDialogP
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">⚠️ 确认回退</h3>
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+      <div className="bg-gray-900 rounded-lg shadow-xl w-full max-w-md border border-gray-700">
+        <div className="px-6 py-4 border-b border-gray-700">
+          <h3 className="text-lg font-semibold text-white">⚠️ 确认回退</h3>
         </div>
 
         <div className="px-6 py-4 space-y-4">
-          <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
-            <p className="text-sm text-yellow-800">
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-3">
+            <p className="text-sm text-yellow-400">
               ⚠️ 回退后无法恢复当前版本，确定继续？
             </p>
           </div>
 
           <div className="space-y-2">
-            <span className="text-sm font-medium text-gray-700">回退影响范围：</span>
-            <ul className="text-sm text-gray-600 space-y-1">
+            <span className="text-sm font-medium text-gray-300">回退影响范围：</span>
+            <ul className="text-sm text-gray-400 space-y-1">
               <li>• 📄 PRD：将回退到 {version.version}</li>
               <li>• 💻 代码：GitHub 将创建 revert commit</li>
               <li>• 🚀 预览：重新部署到目标版本</li>
@@ -102,14 +102,14 @@ export function RollbackDialog({ version, onConfirm, onCancel }: RollbackDialogP
           </div>
 
           {errorMessage && (
-            <div className="bg-red-50 border border-red-200 rounded p-3">
-              <p className="text-sm text-red-700">{errorMessage}</p>
+            <div className="bg-red-500/10 border border-red-500/30 rounded p-3">
+              <p className="text-sm text-red-400">{errorMessage}</p>
             </div>
           )}
 
           {isRollingBack && (
             <div className="space-y-2">
-              <span className="text-sm font-medium text-gray-700">回退进度：</span>
+              <span className="text-sm font-medium text-gray-300">回退进度：</span>
               <div className="space-y-1">
                 {steps.map((step, i) => {
                   const log = rollbackSteps.find((s) => s.step === i + 1);
@@ -118,23 +118,23 @@ export function RollbackDialog({ version, onConfirm, onCancel }: RollbackDialogP
                   return (
                     <div key={i} className="flex items-center gap-2 text-sm">
                       {log?.status === 'completed' ? (
-                        <span className="text-green-600">✓</span>
+                        <span className="text-green-400">✓</span>
                       ) : isFailed ? (
-                        <span className="text-red-600">✗</span>
+                        <span className="text-red-400">✗</span>
                       ) : isRunning ? (
-                        <span className="animate-spin text-blue-600">⏳</span>
+                        <span className="animate-spin text-blue-400">⏳</span>
                       ) : (
-                        <span className="text-gray-300">○</span>
+                        <span className="text-gray-600">○</span>
                       )}
                       <span
                         className={
                           log?.status === 'completed'
-                            ? 'text-green-600'
+                            ? 'text-green-400'
                             : isFailed
-                            ? 'text-red-600'
+                            ? 'text-red-400'
                             : isRunning
-                            ? 'text-blue-600'
-                            : 'text-gray-400'
+                            ? 'text-blue-400'
+                            : 'text-gray-500'
                         }
                       >
                         {step.name}
@@ -147,14 +147,14 @@ export function RollbackDialog({ version, onConfirm, onCancel }: RollbackDialogP
           )}
         </div>
 
-        <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+        <div className="px-6 py-4 border-t border-gray-700 flex justify-end gap-3">
           {isRollingBack ? (
             <Button variant="secondary" disabled>
               回退中...
             </Button>
           ) : errorMessage ? (
             <>
-              <Button variant="ghost" onClick={onCancel}>
+              <Button variant="ghost" className="text-gray-300 hover:text-white" onClick={onCancel}>
                 取消
               </Button>
               <Button variant="primary" onClick={handleContinue}>
@@ -163,7 +163,7 @@ export function RollbackDialog({ version, onConfirm, onCancel }: RollbackDialogP
             </>
           ) : (
             <>
-              <Button variant="ghost" onClick={onCancel}>
+              <Button variant="ghost" className="text-gray-300 hover:text-white" onClick={onCancel}>
                 取消
               </Button>
               <Button variant="danger" onClick={handleRollback}>

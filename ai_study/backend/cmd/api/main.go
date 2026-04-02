@@ -15,6 +15,7 @@ import (
 	"github.com/devpilot/backend/internal/handlers"
 	"github.com/devpilot/backend/internal/temporal"
 	"github.com/devpilot/backend/internal/websocket"
+	"github.com/gorilla/mux"
 )
 
 func main() {
@@ -26,6 +27,12 @@ func main() {
 	} else {
 		log.Println("Database connection established")
 		defer db.Close()
+		// Create memories table if not exists
+		if err := db.InitMemoriesTable(ctx); err != nil {
+			log.Printf("Warning: Failed to init memories table: %v", err)
+		} else {
+			log.Println("Memories table ready")
+		}
 	}
 
 	// Initialize WebSocket server
@@ -61,50 +68,62 @@ func main() {
 	websocket.SetGlobalHub(hub)
 	hub.RunWithTemporalPolling()
 
-	// Create HTTP mux
-	mux := http.NewServeMux()
+	// Create HTTP mux (gorilla/mux for path parameters support)
+	router := mux.NewRouter()
 
 	// Health check
-	mux.HandleFunc("/health", healthHandler)
+	router.HandleFunc("/health", healthHandler)
 
 	// Phase 1 - Homepage APIs
-	mux.HandleFunc("/api/requirements/submit", handlers.HandleRequirementSubmit)
-	mux.HandleFunc("/api/sensitive/check", handlers.HandleSensitiveCheck)
-	mux.HandleFunc("/api/templates", handlers.HandleTemplates)
-	mux.HandleFunc("/api/stats", handlers.HandleStats)
+	router.HandleFunc("/api/requirements/submit", handlers.HandleRequirementSubmit)
+	router.HandleFunc("/api/chat", handlers.HandleChat)
+	router.HandleFunc("/api/sensitive/check", handlers.HandleSensitiveCheck)
+	router.HandleFunc("/api/templates", handlers.HandleTemplates)
+	router.HandleFunc("/api/stats", handlers.HandleStats)
 
 	// Phase 2 - Task Kanban APIs
-	mux.HandleFunc("/api/tasks", handlers.HandleTasksGet)
-	mux.HandleFunc("/api/tasks/{id}", handlers.HandleTaskGet)
-	mux.HandleFunc("/api/tasks/{id}/claim", handlers.HandleTaskClaim)
-	mux.HandleFunc("/api/tasks/{id}/cancel", handlers.HandleTaskCancel)
-	mux.HandleFunc("/api/tasks/{id}/retry", handlers.HandleTaskRetry)
-	mux.HandleFunc("/api/tasks/{id}/transition", handlers.HandleTaskTransition)
-	mux.HandleFunc("/api/tasks/{id}/logs", handlers.HandleTaskLogsGet)
+	router.HandleFunc("/api/tasks", handlers.HandleTasksGet)
+	router.HandleFunc("/api/tasks/{id}", handlers.HandleTaskGet)
+	router.HandleFunc("/api/tasks/{id}/claim", handlers.HandleTaskClaim)
+	router.HandleFunc("/api/tasks/{id}/cancel", handlers.HandleTaskCancel)
+	router.HandleFunc("/api/tasks/{id}/retry", handlers.HandleTaskRetry)
+	router.HandleFunc("/api/tasks/{id}/transition", handlers.HandleTaskTransition)
+	router.HandleFunc("/api/tasks/{id}/logs", handlers.HandleTaskLogsGet)
 
 	// Set HubRef for WebSocket broadcasting
 	handlers.HubRef = hub
 	handlers.HubRefDelivery = hub
 
 	// Phase 3 - Delivery APIs
-	mux.HandleFunc("/api/delivery/{task_id}/prd", handlers.HandlePRDGet)
-	mux.HandleFunc("/api/delivery/{task_id}/prd/rollback", handlers.HandlePRDRollback)
-	mux.HandleFunc("/api/delivery/{task_id}/github", handlers.HandleGitHubGet)
-	mux.HandleFunc("/api/delivery/{task_id}/github/tree", handlers.HandleGitHubTree)
-	mux.HandleFunc("/api/delivery/{task_id}/github/file", handlers.HandleGitHubFile)
-	mux.HandleFunc("/api/delivery/{task_id}/github/commits", handlers.HandleGitHubCommits)
-	mux.HandleFunc("/api/delivery/{task_id}/deploy", handlers.HandleDeploy)
-	mux.HandleFunc("/api/delivery/{task_id}/deploy/status", handlers.HandleDeployStatus)
-	mux.HandleFunc("/api/delivery/{task_id}/deployments", handlers.HandleDeployments)
-	mux.HandleFunc("/api/delivery/{task_id}/rollback/logs", handlers.HandleRollbackLogs)
-	mux.HandleFunc("/api/delivery/{task_id}/rollback", handlers.HandleRollback)
+	router.HandleFunc("/api/delivery/{task_id}/prd", handlers.HandlePRDGet)
+	router.HandleFunc("/api/delivery/{task_id}/prd/rollback", handlers.HandlePRDRollback)
+	router.HandleFunc("/api/delivery/{task_id}/github", handlers.HandleGitHubGet)
+	router.HandleFunc("/api/delivery/{task_id}/github/tree", handlers.HandleGitHubTree)
+	router.HandleFunc("/api/delivery/{task_id}/github/file", handlers.HandleGitHubFile)
+	router.HandleFunc("/api/delivery/{task_id}/github/commits", handlers.HandleGitHubCommits)
+	router.HandleFunc("/api/delivery/{task_id}/deploy", handlers.HandleDeploy)
+	router.HandleFunc("/api/delivery/{task_id}/deploy/status", handlers.HandleDeployStatus)
+	router.HandleFunc("/api/delivery/{task_id}/deployments", handlers.HandleDeployments)
+	router.HandleFunc("/api/delivery/{task_id}/rollback/logs", handlers.HandleRollbackLogs)
+	router.HandleFunc("/api/delivery/{task_id}/rollback", handlers.HandleRollback)
+
+	// Phase 6 - Memory APIs
+	router.HandleFunc("/api/memory", handlers.HandleMemoryCreate).Methods("POST")
+	router.HandleFunc("/api/memory", handlers.HandleMemoryList).Methods("GET")
+	router.HandleFunc("/api/memory/search", handlers.HandleMemorySearch).Methods("GET")
+	router.HandleFunc("/api/memory/relevant", handlers.HandleGetRelevantMemories).Methods("GET")
+	router.HandleFunc("/api/memory/{id}", handlers.HandleMemoryDelete).Methods("DELETE")
+	router.HandleFunc("/api/memory/{id}", handlers.HandleMemoryUpdate).Methods("PUT")
 
 	// Phase 5 - Auth API
 	authHandler := handlers.NewAuthHandler()
-	mux.HandleFunc("/api/auth/github", authHandler.HandleGitHubCallback)
+	router.HandleFunc("/api/auth/github", authHandler.HandleGitHubCallback)
+
+	// Agent callback
+	router.HandleFunc("/api/agent/result", handlers.HandleAgentResult)
 
 	// WebSocket endpoint
-	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		wsServer.HandleWebSocket(w, r)
 	})
 
@@ -124,7 +143,20 @@ func main() {
 	}
 
 	log.Printf("DevPilot API server starting on :%s", port)
-	if err := http.ListenAndServe(":"+port, mux); err != nil {
+
+	// CORS middleware for local development
+	corsMux := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		router.ServeHTTP(w, r)
+	})
+
+	if err := http.ListenAndServe(":"+port, corsMux); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
 }

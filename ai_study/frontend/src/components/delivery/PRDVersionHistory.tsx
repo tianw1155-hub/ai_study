@@ -46,31 +46,32 @@ export function PRDVersionHistory({
         {sortedVersions.map((version, index) => (
           <div key={version.id} className="relative pl-8">
             {index !== sortedVersions.length - 1 && (
-              <div className="absolute left-[11px] top-6 bottom-0 w-0.5 bg-gray-200" />
+              <div className="absolute left-[11px] top-6 bottom-0 w-0.5 bg-gray-700" />
             )}
-            <div className="absolute left-0 top-1.5 w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center">
+            <div className="absolute left-0 top-1.5 w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center">
               <div className="w-2 h-2 rounded-full bg-gray-400" />
             </div>
 
-            <div className="bg-white rounded-lg border border-gray-200 p-4 ml-4">
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-4 ml-4">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <Badge variant={version.is_current ? 'success' : 'default'}>
                     {version.version}
                   </Badge>
                   {version.id === currentVersionId && (
-                    <span className="text-xs text-green-600 font-medium">当前版本</span>
+                    <span className="text-xs text-green-400 font-medium">当前版本</span>
                   )}
                 </div>
                 <span className="text-xs text-gray-500">{formatDate(version.created_at)}</span>
               </div>
 
-              <p className="text-sm text-gray-600 mb-3">{getChangeSummary(version.content)}</p>
+              <p className="text-sm text-gray-400 mb-3">{getChangeSummary(version.content)}</p>
 
               {!version.is_current && (
                 <Button
                   variant="ghost"
                   size="sm"
+                  className="text-gray-400 hover:text-white"
                   onClick={() => setRollbackTarget(version)}
                 >
                   回退到此版本

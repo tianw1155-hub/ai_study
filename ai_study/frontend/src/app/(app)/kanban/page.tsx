@@ -33,12 +33,12 @@ export default function KanbanPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="h-full overflow-y-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 页面标题 */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">任务看板</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-white">任务看板</h1>
+          <p className="mt-1 text-sm text-gray-400">
             实时查看所有任务状态，追踪开发进度
           </p>
         </div>
@@ -51,7 +51,7 @@ export default function KanbanPage() {
           <button
             onClick={() => refetch()}
             disabled={isLoading}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-gray-300 bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:text-white disabled:opacity-50 transition-colors"
           >
             <svg 
               className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} 
@@ -65,7 +65,7 @@ export default function KanbanPage() {
           </button>
           
           {error && (
-            <span className="text-sm text-red-500">
+            <span className="text-sm text-red-400">
               数据加载失败，请重试
             </span>
           )}
@@ -77,9 +77,9 @@ export default function KanbanPage() {
             <div className="grid grid-cols-5 gap-4">
               {[...Array(5)].map((_, i) => (
                 <div key={i} className="space-y-2">
-                  <div className="h-10 bg-gray-200 rounded-lg" />
-                  <div className="h-24 bg-gray-200 rounded-lg" />
-                  <div className="h-24 bg-gray-200 rounded-lg" />
+                  <div className="h-10 bg-gray-800 rounded-lg" />
+                  <div className="h-24 bg-gray-800 rounded-lg" />
+                  <div className="h-24 bg-gray-800 rounded-lg" />
                 </div>
               ))}
             </div>
@@ -87,7 +87,7 @@ export default function KanbanPage() {
         ) : (
           <KanbanBoard tasks={tasks} />
         )}
-      </main>
+      </div>
 
       {/* 详情抽屉 */}
       <TaskDrawer />

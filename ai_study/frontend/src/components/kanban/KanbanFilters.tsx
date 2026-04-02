@@ -104,8 +104,8 @@ export function KanbanFilters({ tasks, onStateClick }: KanbanFiltersProps) {
     <div className="mb-4" ref={dropdownRef}>
       {/* 顶部快捷标签 */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-gray-600">
-          汇总: <span className="font-medium text-gray-900">{stats.total}</span> 任务
+        <span className="text-sm text-gray-400">
+          汇总: <span className="font-medium text-gray-200">{stats.total}</span> 任务
         </span>
         
         <div className="w-px h-4 bg-gray-300" />
@@ -152,7 +152,7 @@ export function KanbanFilters({ tasks, onStateClick }: KanbanFiltersProps) {
             transition-colors
             ${hasActiveFilters 
               ? 'bg-brand-blue text-white' 
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}
+              : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white'}
           `}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -179,10 +179,10 @@ export function KanbanFilters({ tasks, onStateClick }: KanbanFiltersProps) {
 
       {/* 下拉面板 */}
       {isOpen && (
-        <div className="absolute z-50 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 p-4">
+        <div className="absolute z-50 mt-2 w-80 bg-gray-900 rounded-lg shadow-lg border border-gray-700 p-4">
           {/* 任务类型 */}
           <div className="mb-4">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">任务类型</h4>
+            <h4 className="text-sm font-medium text-gray-300 mb-2">任务类型</h4>
             <div className="flex flex-wrap gap-2">
               {typeOptions.map(opt => (
                 <label key={opt.value} className="inline-flex items-center gap-1.5 cursor-pointer">
@@ -196,9 +196,9 @@ export function KanbanFilters({ tasks, onStateClick }: KanbanFiltersProps) {
                         setFilterType(filterType.filter(t => t !== opt.value));
                       }
                     }}
-                    className="w-4 h-4 rounded border-gray-300 text-brand-blue focus:ring-brand-blue"
+                    className="w-4 h-4 rounded border-gray-600 text-brand-blue focus:ring-brand-blue bg-gray-800"
                   />
-                  <span className="text-sm text-gray-600">{opt.label}</span>
+                  <span className="text-sm text-gray-400">{opt.label}</span>
                 </label>
               ))}
             </div>
@@ -206,7 +206,7 @@ export function KanbanFilters({ tasks, onStateClick }: KanbanFiltersProps) {
 
           {/* 优先级 */}
           <div className="mb-4">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">优先级</h4>
+            <h4 className="text-sm font-medium text-gray-300 mb-2">优先级</h4>
             <div className="flex flex-wrap gap-2">
               {priorityOptions.map(opt => (
                 <label key={opt.value} className="inline-flex items-center gap-1.5 cursor-pointer">
@@ -220,9 +220,9 @@ export function KanbanFilters({ tasks, onStateClick }: KanbanFiltersProps) {
                         setFilterPriority(filterPriority.filter(p => p !== opt.value));
                       }
                     }}
-                    className="w-4 h-4 rounded border-gray-300 text-brand-blue focus:ring-brand-blue"
+                    className="w-4 h-4 rounded border-gray-600 text-brand-blue focus:ring-brand-blue bg-gray-800"
                   />
-                  <span className="text-sm text-gray-600">{opt.label}</span>
+                  <span className="text-sm text-gray-400">{opt.label}</span>
                 </label>
               ))}
             </div>
@@ -230,11 +230,11 @@ export function KanbanFilters({ tasks, onStateClick }: KanbanFiltersProps) {
 
           {/* 分配者 */}
           <div className="mb-4">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">分配者</h4>
+            <h4 className="text-sm font-medium text-gray-300 mb-2">分配者</h4>
             <select
               value={filterAssignee || ''}
               onChange={(e) => setFilterAssignee(e.target.value || null)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+              className="w-full px-3 py-2 border border-gray-700 rounded-md text-sm bg-gray-800 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue"
             >
               <option value="">全部</option>
               <option value="unassigned">未分配</option>
@@ -251,9 +251,9 @@ export function KanbanFilters({ tasks, onStateClick }: KanbanFiltersProps) {
               id="show-cancelled"
               checked={showCancelled}
               onChange={(e) => setShowCancelled(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-brand-blue focus:ring-brand-blue"
+              className="w-4 h-4 rounded border-gray-600 text-brand-blue focus:ring-brand-blue bg-gray-800"
             />
-            <label htmlFor="show-cancelled" className="text-sm text-gray-600 cursor-pointer">
+            <label htmlFor="show-cancelled" className="text-sm text-gray-400 cursor-pointer">
               显示已取消
             </label>
           </div>

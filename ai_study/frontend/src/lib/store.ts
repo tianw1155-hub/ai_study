@@ -1,40 +1,24 @@
-import { create } from "zustand";
+import { create } from "zustand"
 
 /**
- * Zustand Store 骨架
- * 
- * DevPilot 全局状态管理。
- * 用于管理应用级别的共享状态，如：
- * - 用户信息
- * - 主题设置
- * - 任务列表
- * - WebSocket 连接状态
- * - 实时任务进度
- * 
- * @see https://zustand-demo.pmnd.rs/
- * @see https://github.com/pmndrs/zustand
- * 
- * 使用示例：
- * 
- * ```typescript
- * // 定义 store
- * interface AppStore {
- *   user: User | null;
- *   setUser: (user: User | null) => void;
- * }
- * 
- * export const useAppStore = create<AppStore>((set) => ({
- *   user: null,
- *   setUser: (user) => set({ user }),
- * }));
- * 
- * // 在组件中使用
- * function UserProfile() {
- *   const { user, setUser } = useAppStore();
- *   // ...
- * }
- * ```
+ * 用户模型配置（登录时由用户自己配置）
  */
+export interface ModelConfig {
+  model: string
+  apiKey: string
+}
+
+/** 从 localStorage 读取模型配置 */
+export function getModelConfig(): ModelConfig | null {
+  if (typeof window === "undefined") return null
+  const raw = localStorage.getItem("model_config")
+  if (!raw) return null
+  try {
+    return JSON.parse(raw) as ModelConfig
+  } catch {
+    return null
+  }
+}
 
 // ============================================
 // 占位类型定义 - 根据实际业务需求完善
@@ -60,7 +44,7 @@ import { create } from "zustand";
 
 /**
  * 应用全局 Store（占位）
- * 
+ *
  * 用于管理：
  * - 用户登录状态
  * - 全局 UI 状态
@@ -82,7 +66,7 @@ export const useAppStore = create<AppStore>((set) => ({
 
 /**
  * 任务 Store（占位）
- * 
+ *
  * 用于管理：
  * - 任务列表
  * - 任务筛选
@@ -112,7 +96,7 @@ export const useTaskStore = create<TaskStore>((set) => ({
 
 /**
  * WebSocket 连接状态 Store（占位）
- * 
+ *
  * 用于管理：
  * - 连接状态
  * - 最后心跳时间

@@ -111,17 +111,17 @@ export function DeployConsole({ taskId }: DeployConsoleProps) {
   const status = currentDeployment?.status || 'idle';
 
   return (
-    <div className="bg-white rounded-lg shadow-md border border-gray-200">
-      <div className="px-6 py-4 border-b border-gray-200">
+    <div className="bg-gray-900 rounded-lg shadow-md border border-gray-700">
+      <div className="px-6 py-4 border-b border-gray-700">
         <div className="flex items-center justify-between">
-          <span className="text-lg font-semibold text-gray-900">🚀 部署控制台</span>
+          <span className="text-lg font-semibold text-white">🚀 部署控制台</span>
           <div className="flex gap-2">
             <button
               onClick={() => setPlatform('vercel')}
               className={`px-3 py-1 text-sm rounded ${
                 platform === 'vercel'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'bg-gray-100 text-gray-600'
+                  ? 'bg-blue-500/20 text-blue-400'
+                  : 'bg-gray-800 text-gray-400'
               }`}
             >
               前端 Vercel
@@ -130,8 +130,8 @@ export function DeployConsole({ taskId }: DeployConsoleProps) {
               onClick={() => setPlatform('render')}
               className={`px-3 py-1 text-sm rounded ${
                 platform === 'render'
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-gray-100 text-gray-600'
+                  ? 'bg-green-500/20 text-green-400'
+                  : 'bg-gray-800 text-gray-400'
               }`}
             >
               后端 Render
@@ -142,7 +142,7 @@ export function DeployConsole({ taskId }: DeployConsoleProps) {
 
       <div className="px-6 py-4">
         <div className="flex items-center gap-3 mb-4">
-          <span className="text-sm text-gray-600">状态：</span>
+          <span className="text-sm text-gray-400">状态：</span>
           {getStatusBadge(status)}
           {currentDeployment?.commit_sha && (
             <code className="text-xs text-gray-500">
@@ -153,7 +153,7 @@ export function DeployConsole({ taskId }: DeployConsoleProps) {
 
         <div
           ref={logsRef}
-          className="bg-gray-900 text-gray-100 rounded p-4 h-48 overflow-y-auto font-mono text-sm"
+          className="bg-gray-950 text-gray-100 rounded p-4 h-48 overflow-y-auto font-mono text-sm border border-gray-800"
         >
           {logs.length === 0 && (
             <div className="text-gray-500">
@@ -177,13 +177,13 @@ export function DeployConsole({ taskId }: DeployConsoleProps) {
         </div>
       </div>
 
-      <div className="px-6 py-4 border-t border-gray-200">
+      <div className="px-6 py-4 border-t border-gray-700">
         <div className="flex items-center gap-3">{getDeployButton()}</div>
       </div>
 
       {history.length > 0 && (
-        <div className="px-6 py-4 border-t border-gray-200">
-          <span className="text-sm font-medium text-gray-700">历史部署</span>
+        <div className="px-6 py-4 border-t border-gray-700">
+          <span className="text-sm font-medium text-gray-300">历史部署</span>
           <div className="mt-2 space-y-2">
             {history.slice(0, 10).map((d) => (
               <div
@@ -193,14 +193,14 @@ export function DeployConsole({ taskId }: DeployConsoleProps) {
                 <div className="flex items-center gap-2">
                   {getStatusBadge(d.status)}
                   <code className="text-xs text-gray-500">{d.commit_sha.slice(0, 7)}</code>
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-gray-500">
                     {new Date(d.created_at).toLocaleString('zh-CN')}
                   </span>
                 </div>
                 {d.status === 'success' && (
                   <button
                     onClick={() => window.open(d.preview_url, '_blank')}
-                    className="text-blue-600 hover:underline text-xs"
+                    className="text-blue-400 hover:underline text-xs"
                   >
                     预览
                   </button>

@@ -138,13 +138,13 @@ export function KanbanBoard({ tasks }: KanbanBoardProps) {
           </div>
 
           {/* 任务列表 */}
-          <div className="flex-1 space-y-2 p-2 bg-gray-50 rounded-b-lg min-h-[200px]">
+          <div className="flex-1 space-y-2 p-2 bg-gray-900/50 rounded-b-lg min-h-[200px]">
             {tasksByColumn[col.id] && tasksByColumn[col.id].length > 0 ? (
               tasksByColumn[col.id].map(task => (
                 <TaskCard key={task.id} task={task} />
               ))
             ) : (
-              <div className="flex items-center justify-center h-24 text-gray-400 text-sm">
+              <div className="flex items-center justify-center h-24 text-gray-500 text-sm">
                 暂无任务
               </div>
             )}
@@ -195,7 +195,7 @@ export function KanbanBoard({ tasks }: KanbanBoardProps) {
               <TaskCard key={task.id} task={task} />
             ))
           ) : (
-            <div className="flex items-center justify-center h-32 text-gray-400 text-sm bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-center h-32 text-gray-500 text-sm bg-gray-900/50 rounded-lg border border-gray-800">
               暂无任务
             </div>
           )}

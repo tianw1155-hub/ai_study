@@ -37,9 +37,16 @@ func HandleTasksGet(w http.ResponseWriter, r *http.Request) {
 
 	// Build query with optional filters
 	query := `
-		SELECT id, title, type, agent_type, priority, state, assignee,
-		       created_at, updated_at, estimated_duration, actual_duration,
-		       retry_count, version
+		SELECT id, title, type,
+		       COALESCE(agent_type, ''),
+		       COALESCE(priority, ''),
+		       COALESCE(state, ''),
+		       COALESCE(assignee, ''),
+		       created_at, updated_at,
+		       COALESCE(estimated_duration, 0),
+		       COALESCE(actual_duration, 0),
+		       COALESCE(retry_count, 0),
+		       COALESCE(version, 1)
 		FROM tasks
 		WHERE 1=1`
 	args := []interface{}{}
@@ -121,9 +128,9 @@ func HandleTaskGet(w http.ResponseWriter, r *http.Request) {
 	// Query task
 	var t models.Task
 	err := db.Pool().QueryRow(ctx,
-		`SELECT id, title, type, agent_type, priority, state, assignee,
-		        created_at, updated_at, estimated_duration, actual_duration,
-		        retry_count, version
+		`SELECT id, title, COALESCE(type,''), COALESCE(agent_type,''), COALESCE(priority,''), state, COALESCE(assignee,''),
+		        created_at, updated_at, COALESCE(estimated_duration,0), COALESCE(actual_duration,0),
+		        COALESCE(retry_count,0), version
 		 FROM tasks WHERE id = $1`, taskID,
 	).Scan(
 		&t.ID, &t.Title, &t.Type, &t.AgentType, &t.Priority, &t.State, &t.Assignee,

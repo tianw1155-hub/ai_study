@@ -56,12 +56,12 @@ function FileTreeNodeItem({ node, level, taskId, defaultBranch }: FileTreeNodeIt
   return (
     <>
       <div
-        className="flex items-center gap-2 py-1 px-2 hover:bg-gray-50 cursor-pointer rounded"
+        className="flex items-center gap-2 py-1 px-2 hover:bg-gray-800 cursor-pointer rounded"
         style={{ paddingLeft: `${level * 16 + 8}px` }}
         onClick={() => (isTree ? setExpanded(!expanded) : setShowPreview(true))}
       >
-        <span className="text-gray-400">{expanded ? '📂' : isTree ? '📁' : getFileIcon(filename)}</span>
-        <span className="text-sm text-gray-700 flex-1">{filename}</span>
+        <span className="text-gray-500">{expanded ? '📂' : isTree ? '📁' : getFileIcon(filename)}</span>
+        <span className="text-sm text-gray-300 flex-1">{filename}</span>
         {!isTree && (
           <>
             <span className="text-xs text-gray-400">{formatFileSize(node.size)}</span>
@@ -102,9 +102,9 @@ function FileTreeNodeItem({ node, level, taskId, defaultBranch }: FileTreeNodeIt
 
 export function FileTree({ files, taskId, defaultBranch }: FileTreeProps) {
   return (
-    <div className="bg-white rounded-lg shadow-md border border-gray-200 mt-4">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <span className="text-lg font-semibold text-gray-900">📂 文件结构</span>
+    <div className="bg-gray-900 rounded-lg shadow-md border border-gray-700 mt-4">
+      <div className="px-6 py-4 border-b border-gray-700">
+        <span className="text-lg font-semibold text-white">📂 文件结构</span>
       </div>
       <div className="px-6 py-4 max-h-[400px] overflow-y-auto">
         {files.map((node) => (

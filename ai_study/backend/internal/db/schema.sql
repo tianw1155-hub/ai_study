@@ -127,3 +127,36 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_github_id ON users(github_id);
+
+-- ============================================================================
+-- user_preferences 表（LLM 模型偏好）
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS user_preferences (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id VARCHAR(100) UNIQUE NOT NULL,
+    model VARCHAR(100),
+    api_key VARCHAR(255),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_preferences_user_id ON user_preferences(user_id);
+
+-- ============================================================================
+-- memories 表（长期记忆 + 每日总结）
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS memories (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id VARCHAR(100),              -- 用户标识（GitHub login 或 anonymous）
+    type VARCHAR(30) NOT NULL,         -- 'session_summary'|'daily_summary'|'project_context'|'user_preference'
+    content TEXT NOT NULL,             -- 记忆内容
+    summary VARCHAR(500),              -- 简短摘要，用于展示列表
+    keywords VARCHAR(255),             -- 关键词，逗号分隔
+    embedding VECTOR(1536),           -- 向量（可选，语义搜索用）
+    created_at TIMESTAMP DEFAULT NOW(),
+    last_used_at TIMESTAMP DEFAULT NOW(),
+    use_count INT DEFAULT 0           -- 被引用次数
+);
+
+CREATE INDEX IF NOT EXISTS idx_memories_user_id ON memories(user_id);
+CREATE INDEX IF NOT EXISTS idx_memories_type ON memories(type);
+CREATE INDEX IF NOT EXISTS idx_memories_created_at ON memories(created_at DESC);

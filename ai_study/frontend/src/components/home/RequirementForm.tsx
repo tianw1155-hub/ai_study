@@ -4,8 +4,9 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { RequirementInput } from './RequirementInput';
 import { DocumentUpload } from './DocumentUpload';
+import { getModelConfig } from '@/lib/store';
 
-const API_BASE = 'http://localhost:8080';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 interface RequirementFormProps {
   initialValue?: string;
@@ -33,10 +34,18 @@ export const RequirementForm: React.FC<RequirementFormProps> = ({
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
+      const modelConfig = getModelConfig();
+      const payload: Record<string, string> = { prompt: requirement };
+      if (modelConfig) {
+        payload.llm_model = modelConfig.model;
+        payload.api_key = modelConfig.apiKey;
+        payload.user_id = JSON.parse(localStorage.getItem('user') || '{}').login || 'anonymous';
+      }
+
       const res = await fetch(`${API_BASE}/api/requirements/submit`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ prompt: requirement }),
+        body: JSON.stringify(payload),
         signal: AbortSignal.timeout(30000),
       });
 

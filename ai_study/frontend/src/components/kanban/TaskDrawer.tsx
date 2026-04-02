@@ -141,11 +141,11 @@ export function TaskDrawer() {
       />
 
       {/* 抽屉 */}
-      <div className="fixed right-0 top-0 h-full w-full max-w-[min(480px,50vw)] bg-white shadow-xl z-50 flex flex-col animate-slide-in">
+      <div className="fixed right-0 top-0 h-full w-full max-w-[min(480px,50vw)] bg-gray-900 shadow-xl z-50 flex flex-col animate-slide-in border-l border-gray-700">
         {/* 头部 */}
-        <div className="flex items-start justify-between p-4 border-b border-gray-200">
+        <div className="flex items-start justify-between p-4 border-b border-gray-700">
           <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-semibold text-gray-900 truncate pr-4">
+            <h2 className="text-lg font-semibold text-white truncate pr-4">
               {taskDetail?.title || '加载中...'}
             </h2>
             <div className="flex items-center gap-2 mt-2">
@@ -167,16 +167,16 @@ export function TaskDrawer() {
           
           <button
             onClick={() => setDrawerOpen(false)}
-            className="p-1 rounded-md hover:bg-gray-100 transition-colors"
+            className="p-1 rounded-md hover:bg-gray-800 transition-colors"
           >
-            <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
         {/* Tab 导航 */}
-        <div className="flex border-b border-gray-200">
+        <div className="flex border-b border-gray-700">
           {tabs.map(tab => (
             <button
               key={tab.id}
@@ -185,7 +185,7 @@ export function TaskDrawer() {
                 flex-1 px-4 py-3 text-sm font-medium transition-colors relative
                 ${activeTab === tab.id 
                   ? 'text-brand-blue' 
-                  : 'text-gray-500 hover:text-gray-700'}
+                  : 'text-gray-400 hover:text-gray-200'}
               `}
             >
               {tab.label}
@@ -200,9 +200,9 @@ export function TaskDrawer() {
         <div className="flex-1 overflow-y-auto p-4">
           {isLoading ? (
             <div className="animate-pulse space-y-4">
-              <div className="h-4 bg-gray-200 rounded w-3/4" />
-              <div className="h-4 bg-gray-200 rounded w-1/2" />
-              <div className="h-4 bg-gray-200 rounded w-5/6" />
+              <div className="h-4 bg-gray-700 rounded w-3/4" />
+              <div className="h-4 bg-gray-700 rounded w-1/2" />
+              <div className="h-4 bg-gray-700 rounded w-5/6" />
             </div>
           ) : taskDetail ? (
             <>
@@ -212,11 +212,11 @@ export function TaskDrawer() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <span className="text-xs text-gray-500">任务 ID</span>
-                      <p className="text-sm font-mono text-gray-900">{taskDetail.id}</p>
+                      <p className="text-sm font-mono text-gray-200">{taskDetail.id}</p>
                     </div>
                     <div>
                       <span className="text-xs text-gray-500">任务类型</span>
-                      <p className="text-sm text-gray-900">
+                      <p className="text-sm text-gray-200">
                         {taskDetail.type === 'code' ? '代码' :
                          taskDetail.type === 'test' ? '测试' :
                          taskDetail.type === 'deploy' ? '部署' : '文档'}
@@ -224,7 +224,7 @@ export function TaskDrawer() {
                     </div>
                     <div>
                       <span className="text-xs text-gray-500">Agent 类型</span>
-                      <p className={`text-sm ${taskDetail.agent_type === 'unknown' ? 'text-red-500' : 'text-gray-900'}`}>
+                      <p className={`text-sm ${taskDetail.agent_type === 'unknown' ? 'text-red-400' : 'text-gray-200'}`}>
                         {taskDetail.agent_type === 'unknown' ? '未分配' :
                          taskDetail.agent_type === 'coder' ? 'Coder' :
                          taskDetail.agent_type === 'tester' ? 'Tester' :
@@ -234,29 +234,29 @@ export function TaskDrawer() {
                     </div>
                     <div>
                       <span className="text-xs text-gray-500">分配者</span>
-                      <p className={`text-sm ${!taskDetail.assignee ? 'text-red-500' : 'text-gray-900'}`}>
+                      <p className={`text-sm ${!taskDetail.assignee ? 'text-red-400' : 'text-gray-200'}`}>
                         {taskDetail.assignee || '未分配'}
                       </p>
                     </div>
                     <div>
                       <span className="text-xs text-gray-500">创建时间</span>
-                      <p className="text-sm text-gray-900">{formatDate(taskDetail.created_at)}</p>
+                      <p className="text-sm text-gray-200">{formatDate(taskDetail.created_at)}</p>
                     </div>
                     <div>
                       <span className="text-xs text-gray-500">更新时间</span>
-                      <p className="text-sm text-gray-900">{formatDate(taskDetail.updated_at)}</p>
+                      <p className="text-sm text-gray-200">{formatDate(taskDetail.updated_at)}</p>
                     </div>
                     <div>
                       <span className="text-xs text-gray-500">预估耗时</span>
-                      <p className="text-sm text-gray-900">{formatDuration(taskDetail.estimated_duration)}</p>
+                      <p className="text-sm text-gray-200">{formatDuration(taskDetail.estimated_duration)}</p>
                     </div>
                     <div>
                       <span className="text-xs text-gray-500">实际耗时</span>
-                      <p className="text-sm text-gray-900">{formatDuration(taskDetail.actual_duration)}</p>
+                      <p className="text-sm text-gray-200">{formatDuration(taskDetail.actual_duration)}</p>
                     </div>
                     <div>
                       <span className="text-xs text-gray-500">重试次数</span>
-                      <p className={`text-sm ${taskDetail.retry_count > 0 ? 'text-orange-500' : 'text-gray-900'}`}>
+                      <p className={`text-sm ${taskDetail.retry_count > 0 ? 'text-orange-400' : 'text-gray-200'}`}>
                         {taskDetail.retry_count} / 3
                       </p>
                     </div>
@@ -268,7 +268,7 @@ export function TaskDrawer() {
               {activeTab === 'input' && (
                 <div>
                   {taskDetail.input ? (
-                    <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-50 p-3 rounded-md overflow-x-auto">
+                    <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono bg-gray-950 p-3 rounded-md overflow-x-auto">
                       {taskDetail.input}
                     </pre>
                   ) : (
@@ -283,7 +283,7 @@ export function TaskDrawer() {
               {activeTab === 'output' && (
                 <div>
                   {taskDetail.output ? (
-                    <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-50 p-3 rounded-md overflow-x-auto">
+                    <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono bg-gray-950 p-3 rounded-md overflow-x-auto">
                       {taskDetail.output}
                     </pre>
                   ) : (
@@ -302,21 +302,21 @@ export function TaskDrawer() {
                       <div 
                         key={index}
                         className={`
-                          p-2 rounded text-xs font-mono
-                          ${log.level === 'ERROR' ? 'bg-red-50 text-red-700' : ''}
-                          ${log.level === 'WARN' ? 'bg-yellow-50 text-yellow-700' : ''}
-                          ${log.level === 'DEBUG' ? 'bg-gray-50 text-gray-600' : ''}
-                          ${log.level === 'INFO' ? 'bg-blue-50 text-blue-700' : ''}
+                          p-2 rounded text-xs font-mono border
+                          ${log.level === 'ERROR' ? 'bg-red-500/10 text-red-400 border-red-500/30' : ''}
+                          ${log.level === 'WARN' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30' : ''}
+                          ${log.level === 'DEBUG' ? 'bg-gray-800 text-gray-400 border-gray-700' : ''}
+                          ${log.level === 'INFO' ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' : ''}
                         `}
                       >
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-semibold">[{log.level}]</span>
                           <span className="text-gray-500">{log.agent}</span>
-                          <span className="text-gray-400 ml-auto">
+                          <span className="text-gray-500 ml-auto">
                             {new Date(log.timestamp).toLocaleTimeString()}
                           </span>
                         </div>
-                        <div className="text-gray-800">{log.message}</div>
+                        <div className="text-gray-300">{log.message}</div>
                         {log.stack && (
                           <div className="mt-1 text-gray-500 whitespace-pre">
                             {log.stack}
@@ -340,13 +340,13 @@ export function TaskDrawer() {
         </div>
 
         {/* 底部操作 */}
-        <div className="p-4 border-t border-gray-200 bg-gray-50">
+        <div className="p-4 border-t border-gray-700 bg-gray-900/80">
           <div className="flex gap-3">
             {/* 取消任务 - pending/running/testing */}
             {taskDetail && ['pending', 'running', 'testing'].includes(taskDetail.state) && (
               <Button
                 variant="danger"
-                className="border border-red-500 text-red-500 bg-white hover:bg-red-50"
+                className="border border-red-500 text-red-400 bg-red-500/10 hover:bg-red-500/20"
                 onClick={handleCancel}
               >
                 取消任务
@@ -367,7 +367,7 @@ export function TaskDrawer() {
             {taskDetail && ['passed', 'completed'].includes(taskDetail.state) && (
               <Button
                 variant="primary"
-                onClick={() => router.push(`/delivery?taskId=${taskDetail.id}`)}
+                onClick={() => router.push(`/delivery?task_id=${taskDetail.id}`)}
               >
                 查看代码
               </Button>

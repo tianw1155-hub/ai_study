@@ -15,7 +15,7 @@ var pool *pgxpool.Pool
 func Init(ctx context.Context) error {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
-		dsn = "postgres://postgres:postgres@localhost:5432/devpilot?sslmode=disable"
+		dsn = "postgres://devpilot:devpilot_secret@localhost:5432/devpilot?sslmode=disable"
 	}
 
 	var err error
@@ -41,4 +41,20 @@ func Close() {
 	if pool != nil {
 		pool.Close()
 	}
+}
+
+// InitMemoriesTable creates the memories table if it doesn't exist.
+func InitMemoriesTable(ctx context.Context) error {
+	_, err := pool.Exec(ctx, `CREATE TABLE IF NOT EXISTS memories (
+		id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+		user_id VARCHAR(100),
+		type VARCHAR(30) NOT NULL,
+		content TEXT NOT NULL,
+		summary VARCHAR(500),
+		keywords VARCHAR(255),
+		created_at TIMESTAMP DEFAULT NOW(),
+		last_used_at TIMESTAMP DEFAULT NOW(),
+		use_count INT DEFAULT 0
+	)`)
+	return err
 }
