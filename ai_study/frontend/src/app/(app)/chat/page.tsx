@@ -40,7 +40,7 @@ export default function ChatPage() {
   const abortControllerRef = useRef<AbortController | null>(null)
   const msgIdRef = useRef(0)
   const initDone = useRef(false)
-  const newId = () => `m_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+  const newId = () => `m_${Date.now()}_${(msgIdRef.current++).toString(36)}`
 
   // Initialize session on mount
   useEffect(() => {
