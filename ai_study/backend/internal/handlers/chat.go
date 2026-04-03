@@ -81,6 +81,31 @@ func HandleChat(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// translateMiniMaxModel translates user-friendly MiniMax model names to the actual API model name.
+// MiniMax API model names include: "ME-Chat" (main chat model), "abab7" (text model), etc.
+// User-facing names like "MiniMax M2.7", "MiniMax-M2.7", "minimax/m2.7" need to be translated.
+func translateMiniMaxModel(model string) (apiModel string, groupID string) {
+	lower := strings.ToLower(model)
+	// Extract group_id from API key if embedded (format: "Bearer <key>..." or just key)
+	// MiniMax Group ID can be passed as query param or header
+
+	// Map user-friendly MiniMax M2.x names to the actual API model
+	switch {
+	case strings.Contains(lower, "m2.7") || strings.Contains(lower, "m2.5") || strings.Contains(lower, "m2"):
+		// MiniMax M2.x series - use the text model
+		// The actual API model for the M2 series is "ME-Chat" or an abab variant
+		// Default to "ME-Chat" which is MiniMax's main chat model
+		apiModel = "ME-Chat"
+	case strings.Contains(lower, "abab"):
+		// Already using abab naming
+		apiModel = model
+	default:
+		// Default chat model
+		apiModel = "ME-Chat"
+	}
+	return apiModel, ""
+}
+
 // handleChatStreaming calls the LLM in streaming mode and writes SSE to the response.
 func handleChatStreaming(w http.ResponseWriter, flusher http.Flusher, req *ChatRequest) error {
 	var body interface{}
@@ -106,6 +131,17 @@ func handleChatStreaming(w http.ResponseWriter, flusher http.Flusher, req *ChatR
 	case strings.HasPrefix(model, "gemini-"):
 		// Google Gemini - different API format, use non-streaming
 		return fmt.Errorf("Gemini streaming not supported via this path")
+
+	case strings.HasPrefix(model, "minimax") || strings.HasPrefix(model, "abab"):
+		// MiniMax - OpenAI-compatible endpoint
+		url = "https://api.minimax.chat/v1/chat/completions"
+		headers = map[string]string{
+			"Content-Type":  "application/json",
+			"Authorization": "Bearer " + req.APIKey,
+		}
+		// Translate user-facing model name to MiniMax API model name
+		apiModel, groupID := translateMiniMaxModel(req.Model)
+		body = buildMiniMaxReq(req.Messages, apiModel, groupID)
 
 	default:
 		// Default to OpenAI-compatible
@@ -227,6 +263,10 @@ func HandleChatNonStreaming(w http.ResponseWriter, r *http.Request, req *ChatReq
 	case strings.HasPrefix(model, "gemini-"):
 		llmResp, err = callGemini(req.Messages, req.Model, req.APIKey)
 
+	case strings.HasPrefix(model, "minimax") || strings.HasPrefix(model, "abab"):
+		apiModel, groupID := translateMiniMaxModel(req.Model)
+		llmResp, err = callMiniMax(req.Messages, apiModel, req.APIKey, groupID)
+
 	default:
 		// Default to OpenAI-compatible
 		llmResp, err = callOpenAI(req.Messages, req.Model, req.APIKey)
@@ -239,6 +279,47 @@ func HandleChatNonStreaming(w http.ResponseWriter, r *http.Request, req *ChatReq
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(llmResp)
+}
+
+// buildMiniMaxReq builds the MiniMax-specific request body.
+// MiniMax API requires group_id and uses model name translation.
+func buildMiniMaxReq(messages []ChatMessage, model, groupID string) map[string]interface{} {
+	systemPrompt := `你是一个资深的 AI 产品经理助手。你的职责是在用户描述他们想要的应用或功能时，通过多轮对话主动提问、澄清需求，确保在开始编码之前对需求有全面、清晰的理解。
+
+在对话中，你要：
+1. 先理解用户想做什么
+2. 针对不清晰的地方主动追问（功能细节、技术偏好、用户群体、边界情况等）
+3. 引导用户完善需求，直到你感觉已经足够清晰
+4. 当你确认需求已经完整时，输出「需求已确认」，并给出简洁的需求摘要
+
+保持对话友好、专业，不要一次性问太多问题，每次问 1-3 个最关键的问题。`
+
+	// Build messages with system prompt prepended
+	openAIMsgs := make([]map[string]string, 0, len(messages)+1)
+	openAIMsgs = append(openAIMsgs, map[string]string{
+		"role":    "system",
+		"content": systemPrompt,
+	})
+	for _, m := range messages {
+		role := m.Role
+		if role == "system" {
+			role = "assistant"
+		}
+		openAIMsgs = append(openAIMsgs, map[string]string{
+			"role":    role,
+			"content": m.Content,
+		})
+	}
+
+	req := map[string]interface{}{
+		"model":    model,
+		"messages": openAIMsgs,
+		"stream":   true,
+	}
+	if groupID != "" {
+		req["group_id"] = groupID
+	}
+	return req
 }
 
 // buildOpenAIReq builds the OpenAI-compatible request body.
@@ -482,5 +563,54 @@ func callGemini(messages []ChatMessage, model, apiKey string) ([]byte, error) {
 
 	return json.Marshal(map[string]interface{}{
 		"content": content,
+	})
+}
+
+// callMiniMax calls the MiniMax Chat Completions API (non-streaming).
+func callMiniMax(messages []ChatMessage, model, apiKey, groupID string) ([]byte, error) {
+	reqBody := buildMiniMaxReq(messages, model, groupID)
+	delete(reqBody, "stream") // non-streaming
+
+	jsonBody, _ := json.Marshal(reqBody)
+	req, err := http.NewRequest(http.MethodPost, "https://api.minimax.chat/v1/chat/completions", bytes.NewReader(jsonBody))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+
+	client := &http.Client{Timeout: 8 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("MiniMax API error %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var respData struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.Unmarshal(bodyBytes, &respData); err != nil {
+		return nil, fmt.Errorf("failed to parse MiniMax response: %w", err)
+	}
+
+	if len(respData.Choices) == 0 {
+		return nil, fmt.Errorf("no response from MiniMax")
+	}
+
+	return json.Marshal(map[string]interface{}{
+		"content": respData.Choices[0].Message.Content,
 	})
 }
