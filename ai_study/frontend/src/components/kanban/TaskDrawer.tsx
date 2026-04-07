@@ -8,6 +8,70 @@ import { fetchTaskDetail, cancelTask, retryTask, canCancel } from '@/lib/api';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { TaskState, Priority } from '@/types/task';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
+function GeneratedOutput({ taskId }: { taskId: string }) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['task-output', taskId],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/api/tasks/${taskId}/output`);
+      if (!res.ok) {
+        if (res.status === 404) return null;
+        throw new Error('Failed to load output');
+      }
+      return res.text();
+    },
+    refetchInterval: (query) => {
+      // Poll until output is available (every 3s)
+      return query.state.data === undefined && query.state.status === 'success' ? false : 3000;
+    },
+    enabled: !!taskId,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="mt-4 border-t border-gray-800 pt-4">
+        <div className="text-xs text-gray-500 mb-2">🤖 AI 生成的代码</div>
+        <div className="flex items-center gap-2 text-gray-400 text-sm">
+          <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full" />
+          正在生成代码，请稍候...
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="mt-4 border-t border-gray-800 pt-4">
+        <div className="text-xs text-gray-500 mb-2">🤖 AI 生成的代码</div>
+        <div className="text-xs text-gray-500">代码生成中...</div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="mt-4 border-t border-gray-800 pt-4">
+        <div className="text-xs text-gray-500 mb-2">🤖 AI 生成的代码</div>
+        <div className="text-xs text-gray-500">等待生成...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 border-t border-gray-800 pt-4">
+      <div className="text-xs text-gray-500 mb-3">🤖 AI 生成的代码</div>
+      <div className="prose prose-invert prose-sm max-w-none">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          {data}
+        </ReactMarkdown>
+      </div>
+    </div>
+  );
+}
 
 const stateLabels: Record<TaskState, string> = {
   pending: '待处理',
@@ -290,6 +354,10 @@ export function TaskDrawer() {
                     <div className="text-center text-gray-500 py-8">
                       暂无输出数据
                     </div>
+                  )}
+                  {/* AI 生成的代码输出 */}
+                  {(taskDetail.state === 'completed' || taskDetail.state === 'failed') && (
+                    <GeneratedOutput taskId={selectedTaskId!} />
                   )}
                 </div>
               )}

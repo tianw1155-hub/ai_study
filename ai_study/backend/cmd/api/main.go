@@ -76,6 +76,12 @@ func main() {
 
 	// Phase 1 - Homepage APIs
 	router.HandleFunc("/api/requirements/submit", handlers.HandleRequirementSubmit)
+	router.HandleFunc("/api/requirements", handlers.HandleRequirementsList)
+	router.HandleFunc("/api/requirements/generate-prd", handlers.HandleGeneratePRD)
+	router.HandleFunc("/api/requirements/{id}", handlers.HandleRequirementGet)
+	router.HandleFunc("/api/requirements/{id}/status", handlers.HandleRequirementStatusUpdate)
+	router.HandleFunc("/api/requirements/{id}/approve", handlers.HandleRequirementApprove)
+	router.HandleFunc("/api/requirements/{id}/review", handlers.HandleRequirementReview)
 	router.HandleFunc("/api/chat", handlers.HandleChat)
 	router.HandleFunc("/api/sensitive/check", handlers.HandleSensitiveCheck)
 	router.HandleFunc("/api/templates", handlers.HandleTemplates)
@@ -83,6 +89,9 @@ func main() {
 
 	// Phase 2 - Task Kanban APIs
 	router.HandleFunc("/api/tasks", handlers.HandleTasksGet)
+	router.HandleFunc("/api/tasks/create", handlers.HandleTasksCreate)
+	router.HandleFunc("/api/tasks/{id}/execute", handlers.HandleTasksExecute)
+	router.HandleFunc("/api/tasks/{id}/output", handlers.HandleTaskOutput)
 	router.HandleFunc("/api/tasks/{id}", handlers.HandleTaskGet)
 	router.HandleFunc("/api/tasks/{id}/claim", handlers.HandleTaskClaim)
 	router.HandleFunc("/api/tasks/{id}/cancel", handlers.HandleTaskCancel)

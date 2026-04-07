@@ -17,6 +17,7 @@ export interface Task {
   priority: Priority;
   state: TaskState;
   assignee: string;
+  user_id?: string;
   created_at: string;
   updated_at: string;
   estimated_duration: number;

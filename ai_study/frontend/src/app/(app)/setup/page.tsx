@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 
 interface ModelOption {
@@ -30,35 +30,74 @@ const MODELS: ModelOption[] = [
   { id: "MiniMax-Text-01", name: "MiniMax Text 01", provider: "MiniMax", description: "超长上下文，200k tokens" },
   { id: "abab6.5s-chat", name: "ABAB 6.5S", provider: "MiniMax", description: "快速对话，优化中文" },
   { id: "abab6.5-chat", name: "ABAB 6.5", provider: "MiniMax", description: "全能型，支持插件" },
-  { id: "minimax/M2.7", name: "MiniMax M2.7", provider: "MiniMax", description: "最新旗舰模型，超强推理" },
+  { id: "minimax-m2.7", name: "MiniMax M2.7", provider: "MiniMax", description: "最新旗舰模型，超强推理" },
 ]
 
 const PROVIDERS = ["全部", "OpenAI", "Anthropic", "Google", "xAI", "MiniMax"]
 
 export default function SetupPage() {
   const router = useRouter()
-  const [selectedModel, setSelectedModel] = useState("")
-  const [apiKey, setApiKey] = useState("")
+  const [selectedModel, setSelectedModel] = useState('')
+  const [apiKey, setApiKey] = useState('')
+
+  // Load from localStorage after mount to avoid hydration mismatch
+  useEffect(() => {
+    const saved = localStorage.getItem('model_config')
+    if (saved) {
+      try {
+        const cfg = JSON.parse(saved)
+        if (cfg.model) setSelectedModel(cfg.model)
+        if (cfg.apiKey) setApiKey(cfg.apiKey)
+      } catch { /* ignore */ }
+    }
+  }, [])
   const [apiKeyVisible, setApiKeyVisible] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState("全部")
   const [showSuccess, setShowSuccess] = useState(false)
-
+  const [testing, setTesting] = useState(false)
+  const [testError, setTestError] = useState('')
   const filteredModels = selectedProvider === "全部"
     ? MODELS
     : MODELS.filter(m => m.provider === selectedProvider)
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!selectedModel || !apiKey.trim()) {
-      alert("请选择模型并输入 API Key")
+      setTestError('请选择模型并输入 API Key')
       return
     }
-    localStorage.setItem("model_config", JSON.stringify({
+    setTesting(true)
+    setTestError('')
+
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: 'Hi' }],
+          model: selectedModel,
+          api_key: apiKey.trim(),
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'API Key 验证失败' }))
+        setTestError(err.error || 'API Key 验证失败')
+        setTesting(false)
+        return
+      }
+    } catch (e) {
+      setTestError('无法连接到服务器，请检查后端是否运行')
+      setTesting(false)
+      return
+    }
+
+    setTesting(false)
+    localStorage.setItem('model_config', JSON.stringify({
       model: selectedModel,
       apiKey: apiKey.trim(),
     }))
     setShowSuccess(true)
     setTimeout(() => {
-      router.push("/")
+      router.push('/')
     }, 1200)
   }
 
@@ -163,6 +202,12 @@ export default function SetupPage() {
             <p className="mt-2 text-xs text-gray-500">
               API Key 仅存储在本地浏览器中，不会发送到我们的服务器
             </p>
+            {testError && (
+              <p className="mt-2 text-xs text-red-400">{testError}</p>
+            )}
+            {testing && (
+              <p className="mt-2 text-xs text-blue-400">正在验证 API Key...</p>
+            )}
           </div>
 
           {/* Actions */}
@@ -175,9 +220,10 @@ export default function SetupPage() {
             </button>
             <button
               onClick={handleSave}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-lg transition-colors shadow-sm"
+              disabled={testing}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white font-semibold py-2.5 px-6 rounded-lg transition-colors shadow-sm disabled:cursor-not-allowed"
             >
-              保存并继续
+              {testing ? '验证中...' : '保存并继续'}
             </button>
           </div>
         </div>

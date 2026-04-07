@@ -36,12 +36,14 @@ export async function fetchTasks(filters?: {
   state?: string[];
   priority?: string[];
   assignee?: string;
+  userId?: string;
 }): Promise<Task[]> {
   const params = new URLSearchParams();
   if (filters?.type?.length) params.set('type', filters.type.join(','));
   if (filters?.state?.length) params.set('state', filters.state.join(','));
   if (filters?.priority?.length) params.set('priority', filters.priority.join(','));
   if (filters?.assignee) params.set('assignee', filters.assignee);
+  if (filters?.userId) params.set('user_id', filters.userId);
 
   try {
     const response = await fetch(`${API_BASE}/api/tasks?${params}`, {
@@ -99,12 +101,15 @@ export async function fetchTaskDetail(id: string): Promise<TaskDetail> {
  * 
  * POST /api/tasks/:id/claim
  */
-export async function claimTask(taskId: string, expectedVersion: number): Promise<{ success: boolean }> {
+export async function claimTask(taskId: string, expectedVersion: number, agentId?: string): Promise<{ success: boolean }> {
   try {
     const response = await fetch(`${API_BASE}/api/tasks/${taskId}/claim`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-      body: JSON.stringify({ expected_version: expectedVersion }),
+      body: JSON.stringify({
+        expected_version: expectedVersion,
+        ...(agentId ? { agent_id: agentId } : {}),
+      }),
     });
     if (!response.ok) {
       if (response.status === 409) throw new Error('CONFLICT');

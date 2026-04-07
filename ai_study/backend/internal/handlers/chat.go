@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -20,9 +21,9 @@ type ChatMessage struct {
 // ChatRequest is the request body for the chat endpoint.
 type ChatRequest struct {
 	Messages []ChatMessage `json:"messages"` // conversation history (user msgs already include latest)
-	Model   string        `json:"model"`    // e.g. "gpt-4o", "claude-3-5-sonnet-latest"
-	APIKey  string        `json:"api_key"`  // user's API key
-	UserID  string        `json:"user_id,omitempty"`
+	Model    string        `json:"model"`    // e.g. "gpt-4o", "MiniMax-Text-01", "claude-3-5-sonnet-latest"
+	APIKey   string        `json:"api_key"`  // user's API key
+	UserID   string        `json:"user_id,omitempty"`
 }
 
 // HandleChat handles POST /api/chat
@@ -82,26 +83,42 @@ func HandleChat(w http.ResponseWriter, r *http.Request) {
 }
 
 // translateMiniMaxModel translates user-friendly MiniMax model names to the actual API model name.
-// MiniMax API model names include: "ME-Chat" (main chat model), "abab7" (text model), etc.
-// User-facing names like "MiniMax M2.7", "MiniMax-M2.7", "minimax/m2.7" need to be translated.
+// MiniMax OpenAI-compatible API model names:
+// - "MiniMax-M2.7" for M2.7 models
+// - "MiniMax-M2.5" for M2.5 models
+// - "MiniMax-M2" for M2 models
+// - "MiniMax-Text-01" for Text-01 model (200K context)
+// - "abab6.5s-chat" / "abab6.5-chat" for ABAB models
 func translateMiniMaxModel(model string) (apiModel string, groupID string) {
-	lower := strings.ToLower(model)
-	// Extract group_id from API key if embedded (format: "Bearer <key>..." or just key)
-	// MiniMax Group ID can be passed as query param or header
+	lower := strings.ToLower(strings.ReplaceAll(model, " ", "-"))
 
-	// Map user-friendly MiniMax M2.x names to the actual API model
 	switch {
-	case strings.Contains(lower, "m2.7") || strings.Contains(lower, "m2.5") || strings.Contains(lower, "m2"):
-		// MiniMax M2.x series - use the text model
-		// The actual API model for the M2 series is "ME-Chat" or an abab variant
-		// Default to "ME-Chat" which is MiniMax's main chat model
-		apiModel = "ME-Chat"
+	case strings.Contains(lower, "text-01"):
+		// Must check before "m2" since "minimax-text-01" contains substring "m2"
+		apiModel = "MiniMax-Text-01"
+	case strings.Contains(lower, "m2.7"):
+		apiModel = "MiniMax-M2.7"
+	case strings.Contains(lower, "m2.5"):
+		apiModel = "MiniMax-M2.5"
+	case strings.Contains(lower, "m2.1"):
+		apiModel = "MiniMax-M2.1"
+	case strings.Contains(lower, "minimax-m2"):
+		// Check "minimax-m2" before generic "m2" to avoid matching "minimax-text-01"
+		if strings.Contains(lower, "minimax-m2.7") {
+			apiModel = "MiniMax-M2.7"
+		} else if strings.Contains(lower, "minimax-m2.5") {
+			apiModel = "MiniMax-M2.5"
+		} else if strings.Contains(lower, "minimax-m2.1") {
+			apiModel = "MiniMax-M2.1"
+		} else {
+			apiModel = "MiniMax-M2"
+		}
 	case strings.Contains(lower, "abab"):
-		// Already using abab naming
+		// ABAB models use their own naming, pass through as-is
 		apiModel = model
 	default:
-		// Default chat model
-		apiModel = "ME-Chat"
+		// Unknown MiniMax model, pass through as-is
+		apiModel = model
 	}
 	return apiModel, ""
 }
@@ -112,6 +129,7 @@ func handleChatStreaming(w http.ResponseWriter, flusher http.Flusher, req *ChatR
 	var url string
 	var headers map[string]string
 
+	log.Printf("[DEBUG] handleChatStreaming: model=%q api_key_len=%d", req.Model, len(req.APIKey))
 	model := strings.ToLower(req.Model)
 
 	switch {
@@ -134,14 +152,14 @@ func handleChatStreaming(w http.ResponseWriter, flusher http.Flusher, req *ChatR
 
 	case strings.HasPrefix(model, "minimax") || strings.HasPrefix(model, "abab"):
 		// MiniMax - OpenAI-compatible endpoint
-		url = "https://api.minimax.chat/v1/chat/completions"
+		url = "https://api.minimaxi.com/v1/chat/completions"
 		headers = map[string]string{
 			"Content-Type":  "application/json",
 			"Authorization": "Bearer " + req.APIKey,
 		}
 		// Translate user-facing model name to MiniMax API model name
-		apiModel, groupID := translateMiniMaxModel(req.Model)
-		body = buildMiniMaxReq(req.Messages, apiModel, groupID)
+		apiModel, _ := translateMiniMaxModel(req.Model)
+		body = buildMiniMaxReq(req.Messages, apiModel)
 
 	default:
 		// Default to OpenAI-compatible
@@ -166,7 +184,12 @@ func handleChatStreaming(w http.ResponseWriter, flusher http.Flusher, req *ChatR
 		httpReq.Header.Set(k, v)
 	}
 
-	client := &http.Client{Timeout: 8 * time.Second}
+	client := &http.Client{
+		Timeout: 120 * time.Second, // 2 min for streaming responses
+		Transport: &http.Transport{
+			DialContext: (&net.Dialer{Timeout: 30 * time.Second}).DialContext,
+		},
+	}
 	resp, err := client.Do(httpReq)
 	if err != nil {
 		return fmt.Errorf("LLM request failed: %w", err)
@@ -179,70 +202,86 @@ func handleChatStreaming(w http.ResponseWriter, flusher http.Flusher, req *ChatR
 		return fmt.Errorf("LLM_API_ERROR:%d:%s", resp.StatusCode, string(bodyBytes))
 	}
 
-	// Read SSE stream and forward to client
+	// Read SSE stream and forward to client using a ring buffer
 	reader := resp.Body
-	buf := make([]byte, 0, 4096)
+	buf := make([]byte, 8192)
+	start := 0
+	end := 0
+
 	for {
-		chunk := make([]byte, 1024)
-		n, err := reader.Read(chunk)
-		if n > 0 {
-			buf = append(buf, chunk[:n]...)
-			// Process complete SSE lines
-			for {
-				line := findSSELine(buf)
-				if line == nil {
-					break
-				}
-				// Parse OpenAI SSE: "data: {...}"
-				if len(line) > 6 && string(line[:6]) == "data: " {
-					data := string(line[6:])
-					if data == "[DONE]" {
-						flusher.Flush()
-						return nil
-					}
-					// Parse the chunk and extract content
-					var chunkData struct {
-						Choices []struct {
-							Delta struct {
-								Content string `json:"content"`
-							} `json:"delta"`
-						} `json:"choices"`
-					}
-					if json.Unmarshal([]byte(data), &chunkData) == nil && len(chunkData.Choices) > 0 {
-						content := chunkData.Choices[0].Delta.Content
-						if content != "" {
-							fmt.Fprintf(w, "data: %s\n\n", content)
-							flusher.Flush()
-						}
-					}
-				}
-			}
+		if end >= len(buf) {
+			n := end - start
+			copy(buf, buf[start:end])
+			start = 0
+			end = n
+		}
+
+		nr, err := reader.Read(buf[end:])
+		if nr > 0 {
+			end += nr
 		}
 		if err != nil {
 			break
+		}
+
+		for start < end {
+			nlIdx := -1
+			for i := start; i < end; i++ {
+				if buf[i] == '\n' {
+					nlIdx = i
+					break
+				}
+				if buf[i] == '\r' {
+					nlIdx = i
+					break
+				}
+			}
+
+			if nlIdx < 0 {
+				break
+			}
+
+			lineEnd := nlIdx
+			if lineEnd > start && buf[lineEnd-1] == '\r' {
+				lineEnd--
+			}
+			line := make([]byte, lineEnd-start)
+			copy(line, buf[start:lineEnd])
+
+			if buf[nlIdx] == '\r' && nlIdx+1 < end && buf[nlIdx+1] == '\n' {
+				start = nlIdx + 2
+			} else {
+				start = nlIdx + 1
+			}
+
+			if len(line) > 6 && string(line[:6]) == "data: " {
+				data := string(line[6:])
+				if data == "[DONE]" {
+					flusher.Flush()
+					return nil
+				}
+				var chunkData struct {
+					Choices []struct {
+						Delta struct {
+							Content string `json:"content"`
+						} `json:"delta"`
+					} `json:"choices"`
+				}
+				if json.Unmarshal([]byte(data), &chunkData) == nil && len(chunkData.Choices) > 0 {
+					content := chunkData.Choices[0].Delta.Content
+					if content != "" {
+						// Use JSON format to properly handle newlines/special chars in SSE
+						jsonData, _ := json.Marshal(map[string]string{"content": content})
+						fmt.Fprintf(w, "data: %s\n\n", jsonData)
+						flusher.Flush()
+					}
+				}
+			}
 		}
 	}
 
 	fmt.Fprintf(w, "data: [DONE]\n\n")
 	flusher.Flush()
-	return nil
-}
-
-// findSSELine finds and removes one complete SSE line from buf.
-// Returns nil if no complete line yet.
-func findSSELine(buf []byte) []byte {
-	for i := 0; i < len(buf); i++ {
-		if buf[i] == '\n' {
-			line := buf[:i]
-			// Skip \r
-			if len(line) > 0 && line[len(line)-1] == '\r' {
-				line = line[:len(line)-1]
-			}
-			// Remove processed bytes
-			copy(buf, buf[i+1:])
-			return line
-		}
-	}
 	return nil
 }
 
@@ -264,8 +303,8 @@ func HandleChatNonStreaming(w http.ResponseWriter, r *http.Request, req *ChatReq
 		llmResp, err = callGemini(req.Messages, req.Model, req.APIKey)
 
 	case strings.HasPrefix(model, "minimax") || strings.HasPrefix(model, "abab"):
-		apiModel, groupID := translateMiniMaxModel(req.Model)
-		llmResp, err = callMiniMax(req.Messages, apiModel, req.APIKey, groupID)
+		apiModel, _ := translateMiniMaxModel(req.Model)
+		llmResp, err = callMiniMax(req.Messages, apiModel, req.APIKey)
 
 	default:
 		// Default to OpenAI-compatible
@@ -283,7 +322,7 @@ func HandleChatNonStreaming(w http.ResponseWriter, r *http.Request, req *ChatReq
 
 // buildMiniMaxReq builds the MiniMax-specific request body.
 // MiniMax API requires group_id and uses model name translation.
-func buildMiniMaxReq(messages []ChatMessage, model, groupID string) map[string]interface{} {
+func buildMiniMaxReq(messages []ChatMessage, model string) map[string]interface{} {
 	systemPrompt := `你是一个资深的 AI 产品经理助手。你的职责是在用户描述他们想要的应用或功能时，通过多轮对话主动提问、澄清需求，确保在开始编码之前对需求有全面、清晰的理解。
 
 在对话中，你要：
@@ -315,9 +354,6 @@ func buildMiniMaxReq(messages []ChatMessage, model, groupID string) map[string]i
 		"model":    model,
 		"messages": openAIMsgs,
 		"stream":   true,
-	}
-	if groupID != "" {
-		req["group_id"] = groupID
 	}
 	return req
 }
@@ -567,12 +603,12 @@ func callGemini(messages []ChatMessage, model, apiKey string) ([]byte, error) {
 }
 
 // callMiniMax calls the MiniMax Chat Completions API (non-streaming).
-func callMiniMax(messages []ChatMessage, model, apiKey, groupID string) ([]byte, error) {
-	reqBody := buildMiniMaxReq(messages, model, groupID)
+func callMiniMax(messages []ChatMessage, model, apiKey string) ([]byte, error) {
+	reqBody := buildMiniMaxReq(messages, model)
 	delete(reqBody, "stream") // non-streaming
 
 	jsonBody, _ := json.Marshal(reqBody)
-	req, err := http.NewRequest(http.MethodPost, "https://api.minimax.chat/v1/chat/completions", bytes.NewReader(jsonBody))
+	req, err := http.NewRequest(http.MethodPost, "https://api.minimaxi.com/v1/chat/completions", bytes.NewReader(jsonBody))
 	if err != nil {
 		return nil, err
 	}

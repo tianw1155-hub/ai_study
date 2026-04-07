@@ -10,10 +10,17 @@ import { TaskState } from '@/types/task';
 export default function KanbanPage() {
   const { setFilterState } = useKanbanStore();
 
-  // 获取任务列表
+  // 获取任务列表（按当前用户过滤）
+  const userId = (() => {
+    try {
+      const user = localStorage.getItem('user')
+      return user ? JSON.parse(user).login : undefined
+    } catch { return undefined }
+  })()
+
   const { data: tasks = [], isLoading, error, refetch } = useQuery({
-    queryKey: ['tasks'],
-    queryFn: () => fetchTasks(),
+    queryKey: ['tasks', userId],
+    queryFn: () => fetchTasks({ userId }),
     refetchInterval: 30000, // 每 30 秒刷新一次
   });
 

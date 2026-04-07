@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -97,17 +98,17 @@ func HandleMemoryList(w http.ResponseWriter, r *http.Request) {
 	argIdx := 1
 
 	if userID != "" {
-		query += ` AND user_id = $` + string(rune('0'+argIdx))
+		query += ` AND user_id = $` + fmt.Sprintf("$%d", argIdx)
 		args = append(args, userID)
 		argIdx++
 	}
 	if memType != "" {
-		query += ` AND type = $` + string(rune('0'+argIdx))
+		query += ` AND type = $` + fmt.Sprintf("$%d", argIdx)
 		args = append(args, memType)
 		argIdx++
 	}
 
-	query += ` ORDER BY last_used_at DESC LIMIT $` + string(rune('0'+argIdx))
+	query += ` ORDER BY last_used_at DESC LIMIT $` + fmt.Sprintf("$%d", argIdx)
 	args = append(args, limit)
 
 	rows, err := db.Pool().Query(ctx, query, args...)
@@ -234,7 +235,7 @@ func HandleMemorySearch(w http.ResponseWriter, r *http.Request) {
 		if kw == "" {
 			continue
 		}
-		kwConditions = append(kwConditions, `(content ILIKE $`+string(rune('0'+argIdx))+` OR keywords ILIKE $`+string(rune('0'+argIdx))+` OR summary ILIKE $`+string(rune('0'+argIdx))+`)`)
+		kwConditions = append(kwConditions, `(content ILIKE $`+fmt.Sprintf("$%d", argIdx)+` OR keywords ILIKE $`+fmt.Sprintf("$%d", argIdx)+` OR summary ILIKE $`+fmt.Sprintf("$%d", argIdx)+`)`)
 		args = append(args, "%"+kw+"%")
 		argIdx++
 	}
@@ -244,7 +245,7 @@ func HandleMemorySearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if userID != "" {
-		query += ` AND user_id = $` + string(rune('0'+argIdx))
+		query += ` AND user_id = $` + fmt.Sprintf("$%d", argIdx)
 		args = append(args, userID)
 		argIdx++
 	}
@@ -308,7 +309,7 @@ func HandleGetRelevantMemories(w http.ResponseWriter, r *http.Request) {
 		if len(word) < 3 {
 			continue
 		}
-		kwArgs = append(kwArgs, `(content ILIKE $`+string(rune('0'+argIdx))+` OR keywords ILIKE $`+string(rune('0'+argIdx))+`)`)
+		kwArgs = append(kwArgs, `(content ILIKE $`+fmt.Sprintf("$%d", argIdx)+` OR keywords ILIKE $`+fmt.Sprintf("$%d", argIdx)+`)`)
 		args = append(args, "%"+word+"%")
 		argIdx++
 	}
@@ -317,7 +318,7 @@ func HandleGetRelevantMemories(w http.ResponseWriter, r *http.Request) {
 	          FROM memories WHERE 1=1`
 
 	if userID != "" {
-		query += ` AND user_id = $` + string(rune('0'+argIdx))
+		query += ` AND user_id = $` + fmt.Sprintf("$%d", argIdx)
 		args = append(args, userID)
 		argIdx++
 	}

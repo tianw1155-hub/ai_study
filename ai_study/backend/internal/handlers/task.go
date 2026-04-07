@@ -6,7 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"bytes"
 	"net/http"
+	"os"
+	"os/exec"
 	"time"
 
 	"github.com/devpilot/backend/internal/db"
@@ -24,6 +27,82 @@ type TaskClaimRequest struct {
 	AgentID        string `json:"agent_id"`
 	ExpectedVersion int    `json:"expected_version"`
 }
+
+// HandleTasksCreate handles POST /api/tasks
+func HandleTasksCreate(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+
+	var req struct {
+		Title    string `json:"title"`
+		Type     string `json:"type"`
+		Priority string `json:"priority"`
+		Assignee string `json:"assignee"`
+		UserID   string `json:"user_id"`
+		ReqID    string `json:"requirement_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, "Invalid request body", "BAD_REQUEST", http.StatusBadRequest)
+		return
+	}
+
+	if req.Title == "" {
+		writeError(w, "Title is required", "BAD_REQUEST", http.StatusBadRequest)
+		return
+	}
+
+	taskType := req.Type
+	if taskType == "" {
+		taskType = "code"
+	}
+	priority := req.Priority
+	if priority == "" {
+		priority = "medium"
+	}
+
+	id := uuid.New().String()
+	assignee := req.Assignee
+	if assignee == "" {
+		assignee = "unassigned"
+	}
+
+	var createdAt time.Time
+	err := db.Pool().QueryRow(ctx,
+		`INSERT INTO tasks (id, title, type, priority, state, assignee, user_id, created_at, updated_at, estimated_duration, retry_count, version)
+		 VALUES ($1, $2, $3, $4, 'pending', $5, $6, NOW(), NOW(), 3600, 0, 1)
+		 RETURNING created_at`,
+		id, req.Title, taskType, priority, assignee, req.UserID,
+	).Scan(&createdAt)
+	if err != nil {
+		log.Printf("HandleTasksCreate: insert failed: %v", err)
+		writeError(w, "Failed to create task", "DB_ERROR", http.StatusInternalServerError)
+		return
+	}
+
+	// If requirement_id provided, mark it as approved
+	if req.ReqID != "" {
+		db.Pool().Exec(ctx,
+			`UPDATE requirements SET status='approved', updated_at=NOW()
+			 WHERE id=$1`,
+			req.ReqID)
+	}
+
+	// Broadcast task created
+	broadcastTaskStateChanged(id, "", "pending")
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"id":         id,
+		"title":      req.Title,
+		"type":       taskType,
+		"priority":   priority,
+		"state":      "pending",
+		"assignee":   assignee,
+		"user_id":    req.UserID,
+		"created_at": createdAt,
+	})
+}
+
 
 // HandleTasksGet handles GET /api/tasks
 // Returns all tasks with optional filtering by state, type, priority, assignee.
@@ -454,3 +533,100 @@ func writeError(w http.ResponseWriter, message, code string, status int) {
 		"code":  code,
 	})
 }
+
+func writeJSON(w http.ResponseWriter, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(data)
+}
+
+// HandleTasksExecute claims a task and spawns a coder agent to work on it.
+func HandleTasksExecute(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+	vars := mux.Vars(r)
+	taskID := vars["id"]
+
+	// Verify task exists and is pending/running
+	var currentState string
+	err := db.Pool().QueryRow(ctx,
+		`SELECT COALESCE(state,'') FROM tasks WHERE id = $1`, taskID,
+	).Scan(&currentState)
+	if err != nil {
+		writeError(w, "Task not found", "NOT_FOUND", http.StatusNotFound)
+		return
+	}
+	if currentState != "pending" && currentState != "running" {
+		writeError(w, "Task is not in pending/running state", "INVALID_STATE", http.StatusBadRequest)
+		return
+	}
+
+	// Update task to running
+	db.Pool().Exec(ctx,
+		`UPDATE tasks SET state='running', updated_at=NOW(), version=version+1 WHERE id=$1`,
+		taskID)
+
+	// Broadcast running state
+	broadcastTaskStateChanged(taskID, currentState, "running")
+
+	// Spawn coder script in background
+	scriptPath := "/Users/tianwei/.openclaw/workspace/ai_study/backend/scripts/run_coder.py"
+	cmd := exec.Command("python3", scriptPath, taskID, "http://localhost:8080")
+	cmd.Dir = "/Users/tianwei/.openclaw/workspace/ai_study/backend"
+	cmd.Stdin = nil
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	go func() {
+		err := cmd.Run()
+		if err != nil {
+			log.Printf("HandleTasksExecute: coder script failed: %v, stdout: %s", err, out.String())
+			db.Pool().Exec(context.Background(),
+				`UPDATE tasks SET state='failed', updated_at=NOW() WHERE id=$1`,
+				taskID)
+			broadcastTaskStateChanged(taskID, "running", "failed")
+			return
+		}
+		log.Printf("HandleTasksExecute: coder script succeeded, output: %s", out.String())
+
+		// Transition task to completed in Go
+		var updatedState string
+		err = db.Pool().QueryRow(context.Background(),
+			`UPDATE tasks SET state='completed', updated_at=NOW()
+			 WHERE id=$1 AND state='running'
+			 RETURNING state`,
+			taskID).Scan(&updatedState)
+		if err != nil {
+			log.Printf("HandleTasksExecute: transition to completed failed: %v", err)
+			return
+		}
+		log.Printf("HandleTasksExecute: task %s transitioned to completed", taskID)
+		broadcastTaskStateChanged(taskID, "running", "completed")
+	}()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"id":      taskID,
+		"state":   "running",
+		"message": "Coding agent started",
+	})
+}
+
+// HandleTaskOutput returns the generated code output for a task.
+func HandleTaskOutput(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	taskID := vars["id"]
+
+	outputFile := fmt.Sprintf("/Users/tianwei/.openclaw/workspace/ai_study/backend/generated/%s/output.md", taskID)
+	data, err := os.ReadFile(outputFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			writeError(w, "Output not ready yet", "NOT_FOUND", http.StatusNotFound)
+			return
+		}
+		writeError(w, "Failed to read output: "+err.Error(), "IO_ERROR", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Write(data)
+}
+

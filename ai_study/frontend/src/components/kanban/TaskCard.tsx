@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from 'react'
 import { Task, TaskType, Priority } from '@/types/task';
 import { Badge } from '@/components/ui/Badge';
 import { useKanbanStore } from '@/lib/kanban-store';
@@ -49,6 +50,7 @@ function formatDuration(seconds: number): string {
 
 export function TaskCard({ task, onClick }: TaskCardProps) {
   const { setSelectedTask, setDrawerOpen } = useKanbanStore();
+  const [claiming, setClaiming] = useState(false);
 
   const handleClick = () => {
     setSelectedTask(task.id);
@@ -56,8 +58,41 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
     onClick?.();
   };
 
+  const handleClaim = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (claiming) return;
+    setClaiming(true);
+    try {
+      const { claimTask } = await import('@/lib/api');
+      const user = localStorage.getItem('user');
+      const agentId = user ? JSON.parse(user).login : 'anonymous';
+      await claimTask(task.id, task.version, agentId);
+
+      // Trigger coding agent
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const API_BASE2 = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+      const res = await fetch(`${API_BASE2}/api/tasks/${task.id}/execute`, {
+        method: 'POST',
+        headers,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: '启动失败' }));
+        alert('AI 开发启动失败: ' + (err.error || '未知错误'));
+      }
+      // WebSocket will update the kanban board
+    } catch {
+      alert('认领失败，请重试');
+    } finally {
+      setClaiming(false);
+    }
+  };
+
   const isUnknown = task.agent_type === 'unknown';
   const isCancelled = task.state === 'cancelled';
+  const isPending = task.state === 'pending';
 
   return (
     <div
@@ -125,6 +160,17 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
           </svg>
           重试 {task.retry_count} 次
         </div>
+      )}
+
+      {/* 立即开发按钮 */}
+      {isPending && (
+        <button
+          onClick={handleClaim}
+          disabled={claiming}
+          className="mt-2 w-full py-1.5 rounded bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white text-xs font-medium transition-colors"
+        >
+          {claiming ? '认领中...' : '▶ 立即开发'}
+        </button>
       )}
     </div>
   );

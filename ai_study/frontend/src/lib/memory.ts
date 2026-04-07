@@ -134,6 +134,18 @@ export function updateSession(sessionId: string, updates: Partial<Pick<Session, 
   saveSessions(sessions)
 }
 
+/** 删除会话 */
+export function deleteSession(sessionId: string) {
+  const sessions = getSessions().filter(s => s.id !== sessionId)
+  saveSessions(sessions)
+  localStorage.removeItem(KEYS.SESSION_PREFIX + sessionId)
+  // If deleted current session, switch to most recent
+  if (getCurrentSessionId() === sessionId) {
+    const next = sessions[0]
+    if (next) setCurrentSessionId(next.id)
+  }
+}
+
 /** 添加消息到当前会话 */
 export function addMessageToSession(sessionId: string, message: ChatMessage) {
   const messages = getSessionMessages(sessionId)

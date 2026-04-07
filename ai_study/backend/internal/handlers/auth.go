@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -117,11 +118,26 @@ func (h *AuthHandler) exchangeCodeForToken(code string) (*GitHubTokenResponse, e
 	}
 	defer resp.Body.Close()
 
+	// Read response body as raw bytes first
+	rawBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read body failed: %w", err)
+	}
+
 	var tokenResp GitHubTokenResponse
-	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
+	if err := json.Unmarshal(rawBody, &tokenResp); err != nil {
 		return nil, fmt.Errorf("decode failed: %w", err)
 	}
+
+	// GitHub returns error as JSON fields even on 200, e.g. {"error":"bad_verification_code","error_description":"..."}
 	if tokenResp.AccessToken == "" {
+		var errResp struct {
+			Error           string `json:"error"`
+			ErrorDescription string `json:"error_description"`
+		}
+		if err := json.Unmarshal(rawBody, &errResp); err == nil && errResp.Error != "" {
+			return nil, fmt.Errorf("GitHub OAuth error: %s (%s)", errResp.Error, errResp.ErrorDescription)
+		}
 		return nil, fmt.Errorf("no access token returned")
 	}
 

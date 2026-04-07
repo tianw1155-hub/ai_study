@@ -12,6 +12,7 @@ type Task struct {
 	Priority          string    `json:"priority"`                  // high/medium/low
 	State             string    `json:"state"`                     // pending/running/testing/passed/failed/cancelled/completed
 	Assignee          string    `json:"assignee"`
+	UserID            string    `json:"user_id"`                  // user who submitted the requirement
 	CreatedAt         time.Time `json:"created_at"`
 	UpdatedAt         time.Time `json:"updated_at"`
 	EstimatedDuration int       `json:"estimated_duration"` // seconds
