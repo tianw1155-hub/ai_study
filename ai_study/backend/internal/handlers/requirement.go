@@ -444,13 +444,12 @@ func HandleGeneratePRD(w http.ResponseWriter, r *http.Request) {
 
 	// Create requirement record first
 	ctx := context.Background()
-	var reqID string
-	err := db.Pool().QueryRow(ctx,
-		`INSERT INTO requirements (title, status, created_by, prd_content)
-		 VALUES ($1, 'draft', $2, '')
-		 RETURNING id`,
-		req.Title, req.UserID,
-	).Scan(&reqID)
+	reqID := uuid.New().String()
+	_, err := db.Pool().Exec(ctx,
+		`INSERT INTO requirements (id, title, status, created_by, prd_content)
+		 VALUES ($1, $2, 'draft', $3, '')`,
+		reqID, req.Title, req.UserID,
+	)
 	if err != nil {
 		log.Printf("HandleGeneratePRD: insert failed: %v", err)
 		writeError(w, "Failed to create requirement", "DB_ERROR", http.StatusInternalServerError)
