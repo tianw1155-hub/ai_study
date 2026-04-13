@@ -36,6 +36,11 @@ func Pool() *pgxpool.Pool {
 	return pool
 }
 
+// Ctx returns a background context for database operations.
+func Ctx() context.Context {
+	return context.Background()
+}
+
 // Close closes the database connection pool.
 func Close() {
 	if pool != nil {

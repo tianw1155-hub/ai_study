@@ -723,3 +723,27 @@ func reviewWithLLM(title, prdContent, model, apiKey string) (string, error) {
 	return content, nil
 }
 
+
+// HandleUserModelConfig returns the model config for a given user (API key, model name).
+// GET /api/users/{user_id}/model-config
+func HandleUserModelConfig(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID := vars["user_id"]
+	if userID == "" {
+		userID = "anonymous"
+	}
+
+	var model, apiKey string
+	err := db.Pool().QueryRow(db.Ctx(),
+		"SELECT COALESCE(model,''), COALESCE(api_key,'') FROM user_preferences WHERE user_id=$1",
+		userID).Scan(&model, &apiKey)
+	if err != nil {
+		model = ""
+		apiKey = ""
+	}
+
+	writeJSON(w, map[string]interface{}{
+		"model":   model,
+		"api_key": apiKey,
+	})
+}

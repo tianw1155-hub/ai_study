@@ -86,6 +86,7 @@ func main() {
 	router.HandleFunc("/api/sensitive/check", handlers.HandleSensitiveCheck)
 	router.HandleFunc("/api/templates", handlers.HandleTemplates)
 	router.HandleFunc("/api/stats", handlers.HandleStats)
+	router.HandleFunc("/api/users/{user_id}/model-config", handlers.HandleUserModelConfig)
 
 	// Phase 2 - Task Kanban APIs
 	router.HandleFunc("/api/tasks", handlers.HandleTasksGet)
