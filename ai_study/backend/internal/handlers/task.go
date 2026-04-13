@@ -493,6 +493,31 @@ func HandleTaskTransition(w http.ResponseWriter, r *http.Request) {
 	// Broadcast task:state_changed WebSocket event
 	broadcastTaskStateChanged(taskID, req.FromState, req.ToState)
 
+	// If transitioning from testing -> running, re-spawn coder agent
+	if req.FromState == "testing" && req.ToState == "running" {
+		scriptPath := "/Users/tianwei/.openclaw/workspace/ai_study/backend/scripts/run_coder.py"
+		cmd := exec.Command("python3", scriptPath, taskID, "http://localhost:8080")
+		cmd.Dir = "/Users/tianwei/.openclaw/workspace/ai_study/backend"
+		cmd.Stdin = nil
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Stderr = &out
+		go func() {
+			err := cmd.Run()
+			if err != nil {
+				log.Printf("HandleTaskTransition: coder script failed for task %s: %v, stdout: %s", taskID, err, out.String())
+				db.Pool().Exec(context.Background(),
+					`UPDATE tasks SET state='failed', updated_at=NOW() WHERE id=$1`, taskID)
+				broadcastTaskStateChanged(taskID, "running", "failed")
+				return
+			}
+			log.Printf("HandleTaskTransition: coder completed for task %s", taskID)
+			db.Pool().Exec(context.Background(),
+				`UPDATE tasks SET state='testing', updated_at=NOW() WHERE id=$1 AND state='running'`, taskID)
+			broadcastTaskStateChanged(taskID, "running", "testing")
+		}()
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
 		"message":   "Transition successful",
@@ -537,6 +562,64 @@ func writeError(w http.ResponseWriter, message, code string, status int) {
 func writeJSON(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(data)
+}
+
+
+// HandleTaskTest runs the tester agent for a task in testing state.
+func HandleTaskTest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, map[string]string{"error": "Method not allowed"})
+		return
+	}
+
+	vars := mux.Vars(r)
+	taskID := vars["id"]
+
+	var state string
+	err := db.Pool().QueryRow(db.Ctx(),
+		"SELECT state FROM tasks WHERE id = $1", taskID).Scan(&state)
+	if err != nil {
+		writeJSON(w, map[string]string{"error": "Task not found"})
+		return
+	}
+	if state != "testing" {
+		writeJSON(w, map[string]string{"error": fmt.Sprintf("Task is in state %s, not testing", state)})
+		return
+	}
+
+	log.Printf("HandleTaskTest: running tester for task %s", taskID)
+
+	scriptPath := "/Users/tianwei/.openclaw/workspace/ai_study/backend/scripts/run_tester.py"
+	cmd := exec.Command("python3", scriptPath, taskID, "http://localhost:8080")
+	cmd.Dir = "/Users/tianwei/.openclaw/workspace/ai_study/backend"
+	cmd.Stdin = nil
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+
+	err = cmd.Run()
+	output := out.String()
+
+	if err != nil {
+		log.Printf("HandleTaskTest: tester FAILED for task %s: %v\nOutput: %s", taskID, err, output)
+		db.Pool().Exec(db.Ctx(),
+			"UPDATE tasks SET state='running', updated_at=NOW() WHERE id=$1 AND state='testing'", taskID)
+		broadcastTaskStateChanged(taskID, "testing", "running")
+		writeJSON(w, map[string]interface{}{
+			"id": taskID, "state": "running", "test_result": "failed",
+			"output": output, "message": "测试未通过，任务已退回 running",
+		})
+		return
+	}
+
+	log.Printf("HandleTaskTest: tester PASSED for task %s", taskID)
+	db.Pool().Exec(db.Ctx(),
+		"UPDATE tasks SET state='completed', updated_at=NOW() WHERE id=$1 AND state='testing'", taskID)
+	broadcastTaskStateChanged(taskID, "testing", "completed")
+	writeJSON(w, map[string]interface{}{
+		"id": taskID, "state": "completed", "test_result": "passed",
+		"output": output, "message": "测试通过！",
+	})
 }
 
 // HandleTasksExecute claims a task and spawns a coder agent to work on it.
@@ -590,16 +673,16 @@ func HandleTasksExecute(w http.ResponseWriter, r *http.Request) {
 		// Transition task to completed in Go
 		var updatedState string
 		err = db.Pool().QueryRow(context.Background(),
-			`UPDATE tasks SET state='completed', updated_at=NOW()
+			`UPDATE tasks SET state='testing', updated_at=NOW()
 			 WHERE id=$1 AND state='running'
 			 RETURNING state`,
 			taskID).Scan(&updatedState)
 		if err != nil {
-			log.Printf("HandleTasksExecute: transition to completed failed: %v", err)
+			log.Printf("HandleTasksExecute: transition to testing failed: %v", err)
 			return
 		}
-		log.Printf("HandleTasksExecute: task %s transitioned to completed", taskID)
-		broadcastTaskStateChanged(taskID, "running", "completed")
+		log.Printf("HandleTasksExecute: task %s transitioned to testing", taskID)
+		broadcastTaskStateChanged(taskID, "running", "testing")
 	}()
 
 	w.Header().Set("Content-Type", "application/json")

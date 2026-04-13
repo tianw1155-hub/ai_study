@@ -172,6 +172,47 @@ export async function retryTask(taskId: string): Promise<{ success: boolean }> {
 }
 
 /**
+ * 手动转换任务状态
+ * POST /api/tasks/:id/transition
+ */
+export async function testTask(taskId: string): Promise<{ success: boolean; test_result?: string; message?: string }> {
+  try {
+    const token = localStorage.getItem('token')
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (token) headers['Authorization'] = `Bearer ${token}`
+
+    const res = await fetch(`${API_BASE}/api/tasks/${taskId}/test`, {
+      method: 'POST',
+      headers,
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || `Test failed: ${res.status}`)
+    return { success: true, test_result: data.test_result, message: data.message }
+  } catch (err) {
+    console.error('testTask failed:', err)
+    return { success: false }
+  }
+}
+
+export async function transitionTask(taskId: string, fromState: string, toState: string): Promise<{ success: boolean }> {
+  try {
+    const token = localStorage.getItem('token')
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (token) headers['Authorization'] = `Bearer ${token}`
+
+    const res = await fetch(`${API_BASE}/api/tasks/${taskId}/transition`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ from_state: fromState, to_state: toState }),
+    })
+    if (!res.ok) throw new Error(`Transition failed: ${res.status}`)
+    return { success: true }
+  } catch {
+    return { success: false }
+  }
+}
+
+/**
  * 获取任务日志
  * 
  * GET /api/tasks/:id/logs

@@ -528,7 +528,7 @@ func generatePRDWithLLM(prompt, model, apiKey string) (string, error) {
 		},
 	})
 
-	httpReq, _ := http.NewRequest("POST", "https://api.minimax.chat/v1/text/chatcompletion_pro",
+	httpReq, _ := http.NewRequest("POST", "https://api.minimaxi.com/v1/chat/completions",
 		bytes.NewBuffer(body))
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+apiKey)
@@ -678,7 +678,7 @@ func reviewWithLLM(title, prdContent, model, apiKey string) (string, error) {
 		},
 	})
 
-	httpReq, _ := http.NewRequest("POST", "https://api.minimax.chat/v1/text/chatcompletion_pro",
+	httpReq, _ := http.NewRequest("POST", "https://api.minimaxi.com/v1/chat/completions",
 		bytes.NewBuffer(body))
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+apiKey)

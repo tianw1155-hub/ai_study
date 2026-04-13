@@ -149,7 +149,13 @@ export function deleteSession(sessionId: string) {
 /** 添加消息到当前会话 */
 export function addMessageToSession(sessionId: string, message: ChatMessage) {
   const messages = getSessionMessages(sessionId)
-  messages.push(message)
+  // Upsert: replace if same id exists (handles streaming update case)
+  const idx = messages.findIndex(m => m.id === message.id)
+  if (idx >= 0) {
+    messages[idx] = message
+  } else {
+    messages.push(message)
+  }
   saveSessionMessages(sessionId, messages)
 
   // 更新会话统计

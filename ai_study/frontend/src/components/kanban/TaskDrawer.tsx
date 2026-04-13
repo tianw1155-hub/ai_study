@@ -187,6 +187,27 @@ export function TaskDrawer() {
     }
   }, [selectedTaskId, setDrawerOpen]);
 
+  // 运行测试
+  const [isTesting, setIsTesting] = useState(false);
+  const handleRunTest = useCallback(async () => {
+    if (!selectedTaskId) return;
+    setIsTesting(true);
+    try {
+      const result = await testTask(selectedTaskId);
+      if (result.success) {
+        if (result.test_result === 'passed') {
+          setDrawerOpen(false);
+        } else {
+          // Test failed, task went back to running - stay open to show feedback
+        }
+      }
+    } catch (error) {
+      console.error('Failed to run test:', error);
+    } finally {
+      setIsTesting(false);
+    }
+  }, [selectedTaskId, setDrawerOpen]);
+
   const tabs: { id: KanbanActiveTab; label: string }[] = [
     { id: 'overview', label: '概述' },
     { id: 'input', label: '输入' },
@@ -418,6 +439,17 @@ export function TaskDrawer() {
                 onClick={handleCancel}
               >
                 取消任务
+              </Button>
+            )}
+            {/* 运行测试 */}
+            {taskDetail && taskDetail.state === 'testing' && (
+              <Button
+                variant="primary"
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={handleRunTest}
+                disabled={isTesting}
+              >
+                {isTesting ? '⏳ 测试中...' : '▶ 运行测试'}
               </Button>
             )}
 

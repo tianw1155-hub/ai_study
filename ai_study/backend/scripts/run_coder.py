@@ -166,21 +166,4 @@ with open(output_file, 'w', encoding='utf-8') as f:
 
 print(f"[coder] Output written to: {output_file}", file=sys.stderr)
 print(f"[coder] Done! Task: {TASK_ID}", file=sys.stderr)
-
-# 6. Transition task to completed
-try:
-    result = api_post_json(f"/api/tasks/{TASK_ID}/transition", {
-        'from_state': 'running',
-        'to_state': 'completed',
-        'logs': [{
-            'timestamp': datetime.datetime.now().isoformat(),
-            'level': 'INFO',
-            'agent': 'coder',
-            'message': f'代码生成完成，输出: {output_file}'
-        }]
-    })
-    print(f"[coder] Transition result: {result}", file=sys.stderr)
-except Exception as e:
-    print(f"[coder] Failed to transition task: {e}", file=sys.stderr)
-
 print("SUCCESS")

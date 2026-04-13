@@ -97,6 +97,7 @@ func main() {
 	router.HandleFunc("/api/tasks/{id}/cancel", handlers.HandleTaskCancel)
 	router.HandleFunc("/api/tasks/{id}/retry", handlers.HandleTaskRetry)
 	router.HandleFunc("/api/tasks/{id}/transition", handlers.HandleTaskTransition)
+	router.HandleFunc("/api/tasks/{id}/test", handlers.HandleTaskTest)
 	router.HandleFunc("/api/tasks/{id}/logs", handlers.HandleTaskLogsGet)
 
 	// Set HubRef for WebSocket broadcasting

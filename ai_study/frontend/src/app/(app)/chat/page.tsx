@@ -82,14 +82,10 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
-  const initDone = useRef(false)
   const submittingRef = useRef(false) // guard against double submit
 
   // Initialize session on mount
   useEffect(() => {
-    if (initDone.current) return
-    initDone.current = true
-
     const storedUser = localStorage.getItem('user')
     if (storedUser) {
       try {
@@ -97,58 +93,42 @@ export default function ChatPage() {
       } catch { /* ignore */ }
     }
 
-    initSession().then(({ sessionId: sid, messages: savedMsgs, pendingSummary: pendSum }) => {
-      setSessionId(sid)
-      setPendingSummary(pendSum)
+    // Welcome message template
+    const welcome: Message = {
+      id: newId(),
+      role: 'assistant',
+      isWelcome: true,
+      content: '👋 你好！我是你的 AI 产品经理。\n\n请描述你想做的应用或功能，我会主动提问直到需求清晰。有什么想法，尽管说！',
+      timestamp: new Date(),
+    }
 
-      const welcome: Message = {
-        id: newId(),
-        role: 'assistant',
-        isWelcome: true,
-        content:
-          '👋 你好！我是你的 AI 产品经理。\n\n' +
-          (pendSum
-            ? `📋 我注意到你昨天有未完成的对话，相关上下文已准备好。\n\n`
-            : '') +
-          '很高兴见到你！我们可以先聊聊你今天想做的产品。\n\n' +
-          '不用着急，随便说说你的想法吧 — 比如你想做什么类型的应用？解决什么问题？有什么具体要求？\n\n' +
-          '我会通过提问帮你把需求理清楚，等我们达成共识了，再开始动手做。',
-        timestamp: new Date(),
-      }
-
-      // Deduplicate by id when restoring
-      const seenIds = new Set<string>()
-      const restored: Message[] = savedMsgs
-        .filter(m => {
-          if (seenIds.has(m.id)) return false
-          seenIds.add(m.id)
-          return true
-        })
-        .map((m, i) => ({ ...m, id: newId(), timestamp: new Date(m.timestamp) }))
-      // Only show welcome if session has no messages yet today
-      if (restored.length > 0 || hasWelcomeMessage(restored)) {
-        setMessages(restored)
+    // Directly read from localStorage synchronously (simpler approach)
+    const currentSid = localStorage.getItem('devpilot_current_session')
+    if (currentSid) {
+      const raw = localStorage.getItem('devpilot_session_' + currentSid)
+      if (raw) {
+        try {
+          const savedMsgs = JSON.parse(raw)
+          // Deduplicate by id, keep LAST occurrence (has complete content)
+          const dedupMap = new Map<string, any>()
+          savedMsgs.forEach((m: any) => { dedupMap.set(m.id, m) })
+          const restored: Message[] = Array.from(dedupMap.values())
+            .map((m: any) => ({ id: newId(), role: m.role, content: m.content || '', timestamp: new Date(m.timestamp), pending: m.pending }))
+          if (restored.length > 0) {
+            setMessages(restored)
+            setSessionId(currentSid)
+          } else {
+            setMessages([welcome])
+          }
+        } catch(e) {
+          setMessages([welcome])
+        }
       } else {
-        setMessages([...restored, welcome])
-        addMessageToSession(sid, { ...welcome, timestamp: welcome.timestamp.toISOString() })
-      }
-    }).catch(() => {
-      const session = createSession()
-      setSessionId(session.id)
-      const welcome: Message = {
-        id: newId(),
-        role: 'assistant',
-        isWelcome: true,
-        content: '👋 你好！我是你的 AI 产品经理。\n\n请描述你想做的应用或功能，我会主动提问直到需求清晰。有什么想法，尽管说！',
-        timestamp: new Date(),
-      }
-      if (!hasWelcomeMessage([])) {
         setMessages([welcome])
-        addMessageToSession(session.id, { ...welcome, timestamp: welcome.timestamp.toISOString() })
-      } else {
-        setMessages([])
       }
-    })
+    } else {
+      setMessages([welcome])
+    }
 
     setSessions(getSessions())
   }, [])
@@ -157,6 +137,8 @@ export default function ChatPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+
 
   // Auto-resize textarea
   useEffect(() => {
@@ -609,7 +591,7 @@ export default function ChatPage() {
 
   function switchSession(sid: string) {
     setCurrentSessionId(sid)
-    setSessionId(sid)
+      setSessionId(sid)
     // Deduplicate by id when restoring
     const seenIds = new Set<string>()
     const msgs = getSessionMessages(sid)
@@ -762,9 +744,10 @@ export default function ChatPage() {
       {/* Messages + PRD Preview */}
       <div className="flex flex-1 overflow-hidden">
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
-        {messages.map((msg, idx) => (
-          <div key={`${msg.id}_idx${idx}`} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4" id="messages-container">
+
+{messages.map((msg, idx) => (
+          <div key={`${msg.id}_idx${idx}`} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`} >
             <div
               className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm ${
                 msg.role === 'user'
@@ -789,26 +772,19 @@ export default function ChatPage() {
                 </details>
               )}
               <div
-                className={`inline-block px-4 py-3 rounded-2xl text-sm whitespace-pre-wrap ${
+                className={`inline-block px-4 py-3 rounded-2xl text-sm whitespace-pre-wrap max-w-[80%] min-h-[2.5rem] ${
                   msg.role === 'user'
                     ? 'bg-blue-500 text-white rounded-tr-md'
                     : msg.role === 'assistant'
                     ? msg.pending
-                      ? 'bg-gray-900 text-gray-100 border border-gray-800 rounded-tl-md animate-pulse'
-                      : 'bg-gray-900 text-gray-100 border border-gray-800 rounded-tl-md'
+                      ? 'bg-gray-800 text-white rounded-tl-md animate-pulse'
+                      : 'bg-gray-800 text-white rounded-tl-md'
                     : 'bg-gray-800 text-gray-300 text-xs italic'
                 }`}
               >
-                {msg.role === 'assistant' && !msg.pending ? (
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                  >
-                    {parseContent(msg.content).actual}
-                  </ReactMarkdown>
-                ) : msg.content}
-                {msg.pending && (
-                  <span className="inline-block ml-1 animate-pulse">▊</span>
-                )}
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {msg.role === 'user' ? msg.content : parseContent(msg.content).actual}
+                </ReactMarkdown>
               </div>
               <div className="mt-1 text-xs text-gray-600">
                 {new Date(msg.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
